@@ -1,5 +1,7 @@
 from db_config import *
 
+'''ручной ввод: "C:\Program Files\PostgreSQL\17\bin\pg_dump" -U postgres -h localhost -p 5432 -d news_bd -F c -f "D:\GitGub\Hakaton2025Spring\backup\backup.dump"'''
+
 # фукнция чтобы полностью выгружать базу данных, со всеми триггерами, процедурами, таблицами, данными из таблицы в sql файл
 def create_backup(password:str):
     """
