@@ -64,7 +64,6 @@ class NewsNotifier:
     def send_news_to_channel(self, channel_id: str):
         """Отправка новостей в канал/чат"""
         try:
-            self.connect_db()
             latest_news = self.get_latest_news()
             
             if not latest_news:

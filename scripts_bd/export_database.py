@@ -8,7 +8,11 @@ def create_backup(password:str):
     """
 
     # Получаем параметры подключения из функции get_db_connection (файл db_config.py)
+<<<<<<< HEAD
     conn = get_db_connection()
+=======
+    conn = get_db_connection('news_db', 'postgres', '12345', 'localhost', '5432')
+>>>>>>> emiliya
     db_params = conn.get_dsn_parameters()
     conn.close()
 

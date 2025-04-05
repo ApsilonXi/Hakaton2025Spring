@@ -1,358 +1,314 @@
 import psycopg2
-import time
-import tgbot as tg
+from psycopg2 import sql
+from psycopg2.extras import DictCursor
+from typing import Optional, List, Dict, Union
+import hashlib
+import uuid
 
 class NewsDB:
-    def __init__(self, login: str, password: str):
-        self.login = login
-        self.password = password 
+    def __init__(self, dbname='news_db', user='postgres', password='password', host='localhost'):
+        """Инициализация подключения к базе данных"""
+        self.conn = psycopg2.connect(
+            dbname=dbname,
+            user=user,
+            password=password,
+            host=host
+        )
+        self.conn.autocommit = True
+        self.cursor = self.conn.cursor(cursor_factory=DictCursor)
+    
+    def __del__(self):
+        """Закрытие подключения при уничтожении объекта"""
+        self.cursor.close()
+        self.conn.close()
+    
+    def _hash_password(self, password: str) -> str:
+        """Хеширование пароля с солью"""
+        salt = uuid.uuid4().hex
+        return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
+    
+    def _check_password(self, hashed_password: str, user_password: str) -> bool:
+        """Проверка пароля"""
+        password, salt = hashed_password.split(':')
+        return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
+    
+    def _get_user_role(self, user_id: int) -> Optional[str]:
+        """Получение роли пользователя"""
+        self.cursor.execute("SELECT user_role FROM users WHERE id = %s", (user_id,))
+        result = self.cursor.fetchone()
+        return result['user_role'] if result else None
+    
+    def _check_admin(self, user_id: int) -> bool:
+        """Проверка, является ли пользователь администратором"""
+        role = self._get_user_role(user_id)
+        return role == 'admin'
+    
+    def _check_verified(self, user_id: int) -> bool:
+        """Проверка, является ли пользователь верифицированным"""
+        role = self._get_user_role(user_id)
+        return role in ('verified', 'admin')
 
+    # Методы для работы с пользователями
+    def register_user(self, login: str, password: str) -> Optional[int]:
+        """Регистрация нового пользователя"""
         try:
-            self.conn = psycopg2.connect(
-                host="127.0.0.1",
-                user=login,
-                password=password,
-                database="news_bd"
+            hashed_password = self._hash_password(password)
+            self.cursor.execute(
+                "INSERT INTO users (user_login, user_password, user_role) VALUES (%s, %s, 'user') RETURNING id",
+                (login, hashed_password)
             )
-            self.cursor = self.conn.cursor()
-            print("[INFO] PostgreSQL connection open.")
-        except Exception as ex:
-            print(f"[ERROR] Connection failed: {ex}")
-
-        self.tg_bot = tg.NewsNotifier(self.conn)
-            
-    def on_close(self):
-        if hasattr(self, 'conn') and self.conn:
-            self.conn.close()
-            print("[INFO] PostgreSQL connection closed.")
-
-    def check_user_exist(self, login: str, password: str):
-        '''Проверка существования логина пользователя'''
-        try:
-            self.cursor.execute("""
-                SELECT (password = crypt(%s, password)) AS is_valid 
-                  FROM users
-                 WHERE login = %s
-                 LIMIT 1;
-                """, (password, login))
-            user = self.cursor.fetchall()
-            if user != []:
-                return True
-            else:
-                return False
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[LOAD ERROR] Failed to load data about users: {e}')   
-
-    def check_folder_exist(self, folder_name: str):
-        '''Проверка существования папки пользователя'''
-        try:
-            self.cursor.execute("""
-                SELECT *
-                  FROM folders
-                 WHERE folder_name = %s
-                 LIMIT 1;
-                """, (folder_name,))
-            folder = self.cursor.fetchall()
-            if folder != []:
-                return True
-            else:
-                return False
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[LOAD ERROR] Failed to load data about folder: {e}')   
-
-    def check_news_exist(self, news_title: str, news_content: str):
-        '''Проверка существования публикации на сайте'''
-        try:
-            self.cursor.execute("""
-                SELECT *
-                  FROM news
-                 WHERE news_title = %s
-                   AND news_content = %s
-                   AND type_news = True
-                 LIMIT 1;
-                """, (news_title, news_content))
-            news = self.cursor.fetchall()
-            if news != []:
-                return True
-            else:
-                return False
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[LOAD ERROR] Failed to load data about news: {e}') 
-
-    def check_source_exist(self, source_name: str):
-        '''Проверка существования информационного ресурса'''
-        try:
-            self.cursor.execute("""
-                SELECT *
-                  FROM sources
-                 WHERE source_name = %s
-                 LIMIT 1;
-                """, (source_name,))
-            sources = self.cursor.fetchall()
-            if sources != []:
-                return True
-            else:
-                return False
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[LOAD ERROR] Failed to load data about source: {e}') 
+            return self.cursor.fetchone()['id']
+        except psycopg2.IntegrityError:
+            return None
     
-    def check_tag_exist(self, tag_name):
-        '''Проверка существования тега в системе'''
-        try:
-            self.cursor.execute("""
-                SELECT *
-                  FROM tags
-                 WHERE tag_name = %s
-                 LIMIT 1;
-                """, (tag_name,))
-            tags = self.cursor.fetchall()
-            if tags != []:
-                return True
-            else:
-                return False
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[LOAD ERROR] Failed to load data about tags: {e}') 
-
-    def load_folders(self, login: str):
-        '''Получение папок пользователя'''
-        try:
-            if self.check_user_exist(login):
-                self.cursor.execute("""
-                    SELECT folder_name
-                      FROM folders
-                     WHERE userLOG = %s;
-                    """, (login,))
-                folders = self.cursor.fetchall()
-                if folders != []:
-                    return folders
-                else:
-                    self.conn.rollback()
-                    raise ValueError("This user doesn't have folders")
-            else:
-                self.conn.rollback()
-                raise ValueError(f'[LOAD ERROR] Failed to load data about user: {e}')
-        except Exception as e:
-                self.conn.rollback()
-                print(f"[LOAD ERROR] Failed to load data about user's folders: {e}")
-
-    def load_news_from_folders(self, login: str):
-        '''Получение статей, сохраненых в папке пользователя'''
-        try:
-            folder_news = {}
-            if self.check_user_exist(self):
-                folders = self.load_folders(login)
-                for name in folders:
-                    self.cursor.execute("""
-                        SELECT s.source_name, n.news_title, n.news_content
-                          FROM folders f
-                          JOIN news n 
-                            ON f.newsID = n.news_id
-                          JOIN source
-                            ON n.sourceID = s.source_id
-                         WHERE f.folder_name = %s
-                           AND f.userLOG = %s;
-                        """, (name, login))
-                    folder_news[name] = list(self.cursor.fetchall())
-                    return folder_news
-            else:
-                self.conn.rollback()
-                raise ValueError(f'[LOAD ERROR] Failed to load data about user: {e}')
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[LOAD ERROR] Failed load news from folder: {e}')
-
-    def insert_new_user(self, login: str, password: str, role: str = 'user'):
-        '''Добавление нового пользователя'''
-        try:
-            if self.check_user_exist(login):
-                self.cursor.execute("""
-                    INSERT INTO users (login, password, role)
-                    VALUES (%s, crypt(%s, gen_salt('bf')), %s); 
-                    """, (login, password, role))
-                self.conn.commit()
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[TRANSACTION] Failed insert user into database: {e}')
-            
-    def update_user_password(self, login: str, old_password: str, new_password: str):
-        '''Обновление пароля пользователя'''
-        # пользователь ОБЯЗАН указать свой старый пароль, чтобы обновить его
-        try:
-            self.cursor.execute("""
-                SELECT login, password
-                  FROM users
-                 WHERE login = %s 
-                   AND password = %s;
-                """, (login, old_password))
-            user = self.cursor.fetchall()
-            if user != []:
-                self.cursor.execute("""
-                    UPDATE users
-                       SET password = %s
-                     WHERE login = %s
-                       AND password = %s;
-                    """, (new_password, login, new_password))
-                self.conn.commit()
-            else:
-                self.conn.rollback()
-                raise ValueError('This user is not exist')
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[TRANSACTION] Failed update user password: {e}')
-
-    def create_folder_user(self, login: str, folder_name: str):
-        '''Создание пустой папки (подборки)'''
-        try:
-            if self.check_user_exist(login):
-                if self.check_folder_exist(folder_name):
-                    self.cursor.execute("""
-                        INSERT INTO folders (userLOG, folder_name)
-                        VALUES (%s, %s);
-                        """, (login, folder_name))
-                    self.conn.commit()
-                else:
-                    self.conn.rollback()
-                    raise ValueError('This folder alredy exist')
-            else:
-                self.conn.rollback()
-                raise ValueError(f'[LOAD ERROR] Failed load data about user: {e}')
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[TRANSACTION] Failed create folder: {e}')
-
-    def add_news_to_folder(self, login: str, folder_name: str, title: str, content: str):
-        '''Добавление публикации в папку пользователя'''
-        try:
-            if self.check_user_exist(login):
-                if self.check_folder_exist(folder_name):
-                    self.cursor.execute("""
-                        INSERT INTO folders (userLOG, folder_name, newsID)
-                        VALUES (%s, %s, %s);
-                        """, (login, folder_name, self.get_news_id(title, content)))
-                    self.conn.commit()
-                else:
-                    self.conn.rollback()
-                    raise ValueError('This folder alredy exist')
-            else:
-                self.conn.rollback()
-                raise ValueError(f'[LOAD ERROR] Failed load data about folder: {e}')
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[TRANSACTION] Failed add news to folder: {e}')
-
-    def delete_news_from_folder(self, login: str, folder_name: str, news_title: str, news_content: str):
-        '''Удаление публикации из папки пользователя'''
-        try:
-            if self.check_folder_exist(folder_name):
-                if self.check_news_exist(news_title, news_content):
-                    self.cursor.execute("""
-                        SELECT news_id
-                         WHERE news_title = %s
-                           AND news_content %s;
-                        """)
-                    news = self.cursor.fetchall()
-                    self.cursor.execute("""
-                        DELETE FROM folders
-                         WHERE newsID = %s
-                           AND userLOG = %s;
-                        """, (news, login))
-                    self.conn.commit()
-                else:
-                    self.conn.rollback()
-                    raise ValueError('This folder alredy exist')
-            else:
-                self.conn.rollback()
-                raise ValueError(f'[LOAD ERROR] Failed load data about folder: {e}')
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[TRANSACTION] Failed delete news from folder: {e}')
-
-
-
-    def add_new_news(self, type_news: bool, news_title: str, news_content: str, date: time, status: bool, tags: list, source: str):
-        '''Добавление новой публикации на сайт'''
-        try:
-            if self.check_news_exist(news_title, news_content):
-                raise ValueError('This news is alredy exist')
-            else:
-                for tag in tags:
-                    self.cursor.execute("""
-                        SELECT tag_id 
-                          FROM tags
-                         WHERE tag_name = %s;
-                        """, (tag,))
-                    tag_id = self.cursor.fetchall()
-                    self.cursor.execute("""
-                        SELECT source_id 
-                          FROM source
-                         WHERE source_name = %s;
-                        """, (source,))
-                    source_id = self.cursor.fetchall()
-                    self.cursor.execute("""
-                        INSERT INTO news (type_news, news_title, news_content, date, status, tagID, sourceID)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s);
-                        """, (type_news, news_title, news_content, date, status, tag_id, source_id))
-                    self.conn.commit()
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[TRANSACTION] Failed delete news from folder: {e}')
-
-    def update_news(self, type_news: bool=None, news_title: str=None, news_content: str=None, date: time=None, status: bool=None, tags: list=None, source: str=None):
-        '''Редактирование новости на сайте'''
-        try:
-            if self.check_news_exist(news_title, news_content):
-                fields = []
-                params = []
-                
-                if type_news is not None:
-                    fields.append("type_news = ?")
-                    params.append(type_news)
-                if news_title is not None:
-                    fields.append("news_title = ?")
-                    params.append(news_title)
-                if news_content is not None:
-                    fields.append("news_content = ?")
-                    params.append(news_content)
-                if date is not None:
-                    fields.append("date = ?")
-                    params.append(date)
-                if status is not None:
-                    fields.append("status = ?")
-                    params.append(status)
-                if tags is not None:
-                    fields.append("tags = ?")
-                    params.append(tags)
-                if source is not None:
-                    fields.append("source = ?")
-                    params.append(source)
-                
-                if fields:
-                    sql = "UPDATE news SET " + ", ".join(fields) + " WHERE news_title = ? OR news_content = ?"
-                    params.extend([news_title, news_content])
-                    self.cursor.execute(sql, params)
-                    self.conn.commit()
-                else:
-                    print('[TRANSACTION] No fields to update')
-        except Exception as e:
-            self.conn.rollback()
-            print(f'[TRANSACTION] Failed update news in database: {e}')
-
-
-
-
-
-
-
+    def authenticate_user(self, login: str, password: str) -> Optional[Dict]:
+        """Аутентификация пользователя"""
+        self.cursor.execute(
+            "SELECT id, user_password, user_role FROM users WHERE user_login = %s",
+            (login,)
+        )
+        user = self.cursor.fetchone()
+        
+        if user and self._check_password(user['user_password'], password):
+            return {
+                'id': user['id'],
+                'login': login,
+                'role': user['user_role']
+            }
+        return None
     
-
+    def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
+        """Смена пароля пользователя"""
+        self.cursor.execute(
+            "SELECT user_password FROM users WHERE id = %s",
+            (user_id,)
+        )
+        result = self.cursor.fetchone()
+        
+        if not result or not self._check_password(result['user_password'], old_password):
+            return False
+        
+        new_hashed_password = self._hash_password(new_password)
+        self.cursor.execute(
+            "UPDATE users SET user_password = %s WHERE id = %s",
+            (new_hashed_password, user_id)
+        )
+        return True
     
-            
+    def upgrade_to_verified(self, admin_id: int, user_id: int) -> bool:
+        """Повышение пользователя до верифицированного (админом)"""
+        if not self._check_admin(admin_id):
+            return False
+        
+        self.cursor.execute(
+            "UPDATE users SET user_role = 'verified' WHERE id = %s",
+            (user_id,)
+        )
+        return self.cursor.rowcount > 0
     
-
-            
-
+    def set_notification_preference(self, user_id: int, preference: str) -> bool:
+        """Установка предпочтений уведомлений"""
+        self.cursor.execute(
+            "UPDATE users SET notification = %s WHERE id = %s",
+            (preference, user_id)
+        )
+        return self.cursor.rowcount > 0
+    
+    def update_subscriptions(self, user_id: int, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> bool:
+        """Обновление подписок пользователя"""
+        updates = []
+        params = []
+        
+        if tag_id is not None:
+            updates.append("tag_subscription = %s")
+            params.append(tag_id)
+        
+        if source_id is not None:
+            updates.append("sources_subsc = %s")
+            params.append(source_id)
+        
+        if not updates:
+            return False
+        
+        params.append(user_id)
+        query = sql.SQL("UPDATE users SET {} WHERE id = %s").format(
+            sql.SQL(", ").join(map(sql.SQL, updates))
+        )
+        self.cursor.execute(query, params)
+        return self.cursor.rowcount > 0
+    
+    # Методы для работы с новостями
+    def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None, 
+                source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
+        """
+        Добавление новости:
+        - Для верифицированных и админов: сразу публикуется (status=True)
+        - Для обычных: на модерацию (status=False)
+        """
+        role = self._get_user_role(user_id)
+        if role is None:
+            return None
+        
+        status = role in ('verified', 'admin')
+        
+        self.cursor.execute(
+            """INSERT INTO news (title, content, status, tag, source, type_news)
+               VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
+            (title, content, status, tag_id, source_id, not is_organization)
+        )
+        news_id = self.cursor.fetchone()['id']
+        
+        # Если указан тег, создаем связь в tags_news
+        if tag_id:
+            self.add_tag_to_news(user_id, news_id, tag_id)
+        
+        return news_id
+    
+    def get_published_news(self, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> List[Dict]:
+        """Получение опубликованных новостей"""
+        query = "SELECT * FROM news WHERE status = TRUE"
+        params = []
+        
+        if tag_id is not None:
+            query += " AND id IN (SELECT newsID FROM tags_news WHERE tagID = %s)"
+            params.append(tag_id)
+        
+        if source_id is not None:
+            query += " AND source = %s"
+            params.append(source_id)
+        
+        self.cursor.execute(query, params)
+        return [dict(row) for row in self.cursor.fetchall()]
+    
+    def get_news_for_moderation(self, admin_id: int) -> List[Dict]:
+        """Получение новостей для модерации (админом)"""
+        if not self._check_admin(admin_id):
+            return []
+        
+        self.cursor.execute("SELECT * FROM news WHERE status = FALSE")
+        return [dict(row) for row in self.cursor.fetchall()]
+    
+    def approve_news(self, admin_id: int, news_id: int) -> bool:
+        """Одобрение новости (админом)"""
+        if not self._check_admin(admin_id):
+            return False
+        
+        self.cursor.execute(
+            "UPDATE news SET status = TRUE WHERE id = %s",
+            (news_id,)
+        )
+        return self.cursor.rowcount > 0
+    
+    def reject_news(self, admin_id: int, news_id: int) -> bool:
+        """Отклонение новости (админом)"""
+        if not self._check_admin(admin_id):
+            return False
+        
+        self.cursor.execute("DELETE FROM news WHERE id = %s AND status = FALSE", (news_id,))
+        return self.cursor.rowcount > 0
+    
+    # Методы для работы с тегами
+    def add_tag(self, name: str) -> Optional[int]:
+        """Добавление нового тега"""
+        try:
+            self.cursor.execute(
+                "INSERT INTO tags (name) VALUES (%s) RETURNING id",
+                (name,)
+            )
+            return self.cursor.fetchone()['id']
+        except psycopg2.IntegrityError:
+            return None
+    
+    def get_all_tags(self) -> List[Dict]:
+        """Получение списка всех тегов"""
+        self.cursor.execute("SELECT * FROM tags")
+        return [dict(row) for row in self.cursor.fetchall()]
+    
+    def add_tag_to_news(self, user_id: int, news_id: int, tag_id: int) -> bool:
+        """Добавление тега к новости"""
+        if not (self._check_admin(user_id) or self._check_verified(user_id)):
+            return False
+        
+        try:
+            self.cursor.execute(
+                "INSERT INTO tags_news (tagID, newsID) VALUES (%s, %s)",
+                (tag_id, news_id)
+            )
+            return True
+        except psycopg2.IntegrityError:
+            return False
+    
+    # Методы для работы с источниками
+    def add_source(self, name: str, link: str) -> Optional[int]:
+        """Добавление нового источника"""
+        try:
+            self.cursor.execute(
+                "INSERT INTO sources (name, link) VALUES (%s, %s) RETURNING id",
+                (name, link)
+            )
+            return self.cursor.fetchone()['id']
+        except psycopg2.IntegrityError:
+            return None
+    
+    def get_all_sources(self) -> List[Dict]:
+        """Получение списка всех источников"""
+        self.cursor.execute("SELECT * FROM sources")
+        return [dict(row) for row in self.cursor.fetchall()]
+    
+    # Методы для работы с папками
+    def create_folder(self, user_id: int, folder_name: str) -> Optional[int]:
+        """Создание папки для пользователя"""
+        self.cursor.execute(
+            "SELECT user_login FROM users WHERE id = %s",
+            (user_id,)
+        )
+        user = self.cursor.fetchone()
+        if not user:
+            return None
+        
+        try:
+            self.cursor.execute(
+                "INSERT INTO folders (userLOG, name) VALUES (%s, %s) RETURNING id",
+                (user['user_login'], folder_name)
+            )
+            return self.cursor.fetchone()['id']
+        except psycopg2.IntegrityError:
+            return None
+    
+    def add_news_to_folder(self, user_id: int, folder_id: int, news_id: int) -> bool:
+        """Добавление новости в папку"""
+        # Проверяем, что папка принадлежит пользователю
+        self.cursor.execute(
+            """SELECT 1 FROM folders f
+               JOIN users u ON f.userLOG = u.user_login
+               WHERE f.id = %s AND u.id = %s""",
+            (folder_id, user_id)
+        )
+        if not self.cursor.fetchone():
+            return False
+        
+        self.cursor.execute(
+            "UPDATE folders SET newsID = %s WHERE id = %s",
+            (news_id, folder_id)
+        )
+        return self.cursor.rowcount > 0
+    
+    def get_user_folders(self, user_id: int) -> List[Dict]:
+        """Получение папок пользователя"""
+        self.cursor.execute(
+            """SELECT f.id, f.name, f.newsID 
+               FROM folders f
+               JOIN users u ON f.userLOG = u.user_login
+               WHERE u.id = %s""",
+            (user_id,)
+        )
+        return [dict(row) for row in self.cursor.fetchall()]
+    
+    def suggest_news_source(self, user_id: int, link: str) -> bool:
+        """Отправка предложения нового источника"""
+        # Используем поле notification для хранения предложений
+        self.cursor.execute(
+            "UPDATE users SET notification = %s WHERE id = %s",
+            (f"source_suggestion:{link}", user_id)
+        )
+        return self.cursor.rowcount > 0
