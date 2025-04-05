@@ -22,18 +22,6 @@ class NewsDB:
         self.cursor.close()
         self.conn.close()
     
-    def _hash_password(self, password: str) -> str:
-        """Хеширование пароля"""
-        salt = uuid.uuid4().hex
-        return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
-    
-    def _check_password(self, hashed_password: str, user_password: str) -> bool:
-        """Проверка пароля"""
-        if not hashed_password or ':' not in hashed_password:
-            return False
-        password, salt = hashed_password.split(':')
-        return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
-    
     def _get_user_role(self, user_id: int) -> Optional[str]:
         """Получение роли пользователя"""
         self.cursor.execute("SELECT user_role FROM users WHERE id = %s", (user_id,))
@@ -52,32 +40,46 @@ class NewsDB:
 
     # Методы для работы с пользователями
     def register_user(self, login: str, password: str) -> Optional[int]:
-        """Регистрация нового пользователя"""
+        """Регистрация нового пользователя с использованием функции register_user"""
         try:
-            hashed_password = self._hash_password(password)
+            # Вызываем функцию register_user из базы данных
             self.cursor.execute(
-                "INSERT INTO users (user_login, user_password, user_role) VALUES (%s, %s, 'user') RETURNING id",
-                (login, hashed_password)
+                "SELECT register_user(%s, %s) AS result",
+                (login, password)
+            )
+            # После вызова функции, получаем ID нового пользователя
+            self.cursor.execute(
+                "SELECT id FROM users WHERE user_login = %s",
+                (login,)
             )
             return self.cursor.fetchone()['id']
         except psycopg2.IntegrityError:
             return None
-    
+
     def authenticate_user(self, login: str, password: str) -> Optional[Dict]:
-        """Аутентификация пользователя"""
+        """Аутентификация пользователя с использованием функции authenticate_user"""
+        # Сначала проверяем аутентификацию через функцию
         self.cursor.execute(
-            "SELECT id, user_password, user_role FROM users WHERE user_login = %s",
+            "SELECT authenticate_user(%s, %s) AS auth_result",
+            (login, password)
+        )
+        auth_result = self.cursor.fetchone()['auth_result']
+        
+        if not auth_result:
+            return None
+        
+        # Если аутентификация успешна, получаем данные пользователя
+        self.cursor.execute(
+            "SELECT id, user_login, user_role FROM users WHERE user_login = %s",
             (login,)
         )
         user = self.cursor.fetchone()
         
-        if user and self._check_password(user['user_password'], password):
-            return {
-                'id': user['id'],
-                'login': login,
-                'role': user['user_role']
-            }
-        return None
+        return {
+            'id': user['id'],
+            'login': user['user_login'],
+            'role': user['user_role']
+        }
     
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
         """Смена пароля пользователя"""
