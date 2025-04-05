@@ -1,4 +1,5 @@
 import psycopg2
+import time
 
 class News:
     def __init__(self, login: str, password: str):
@@ -66,6 +67,7 @@ class News:
                   FROM news
                  WHERE news_title = %s
                    AND news_content = %s
+                   AND type_news = True
                  LIMIT 1;
                 """, (news_title, news_content))
             news = self.cursor.fetchall()
@@ -269,13 +271,46 @@ class News:
 
 
 
-    def add_new_news(self):
+    def add_new_news(self, type_news: bool, news_title: str, news_content: str, date: time, status: bool, tags: list, source: str):
         '''Добавление новой публикации на сайт'''
         try:
-            pass
+            if self.check_news_exist(news_title, news_content):
+                raise ValueError('This news is alredy exist')
+            else:
+                for tag in tags:
+                    self.cursor.execute("""
+                        SELECT tag_id 
+                          FROM tags
+                         WHERE tag_name = %s;
+                        """, (tag,))
+                    tag_id = self.cursor.fetchall()
+                    self.cursor.execute("""
+                        SELECT source_id 
+                          FROM source
+                         WHERE source_name = %s;
+                        """, (source,))
+                    source_id = self.cursor.fetchall()
+                    self.cursor.execute("""
+                        INSERT INTO news (type_news, news_title, news_content, date, status, tagID, sourceID)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s);
+                        """, (type_news, news_title, news_content, date, status, tag_id, source_id))
+                    self.conn.commit()
         except Exception as e:
             self.conn.rollback()
             print(f'[TRANSACTION] Failed delete news from folder: {e}')
+
+    def update_news(self, type_news: bool=None, news_title: str=None, news_content: str=None, date: time=None, status: bool=None, tags: list=None, source: str=None):
+        '''Редактирование новости на сайте'''
+        try:
+            if self.check_news_exist(news_title, news_content):
+                sql = "SET "
+                self.cursor.execute("""
+                    UPDATE news
+                       SET 
+                    """)
+        except Exception as e:
+            self.conn.rollback()
+            print(f'[TRANSACTION] Failed update news in database: {e}')
 
 
 
