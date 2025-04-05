@@ -281,7 +281,8 @@ ALTER SEQUENCE public.tags_tag_id_seq OWNED BY public.tags.tag_id;
 CREATE TABLE public.users (
     user_login character(20) NOT NULL,
     user_password character(20) NOT NULL,
-    user_role character(15) NOT NULL
+    user_role character(15) NOT NULL,
+    subscription "char"
 );
 
 
@@ -372,7 +373,7 @@ COPY public.tags (tag_id, tag_name) FROM stdin;
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.users (user_login, user_password, user_role) FROM stdin;
+COPY public.users (user_login, user_password, user_role, subscription) FROM stdin;
 \.
 
 
