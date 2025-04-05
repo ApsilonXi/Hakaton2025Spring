@@ -1,5 +1,6 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from scripts_bd.db_methods import *
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -16,7 +17,7 @@ CONFIG = {
 }
 
 # "База данных" пользователей
-user_db = {}
+db = NewsDB()
 
 
 class UserState:
@@ -266,7 +267,7 @@ async def send_daily_digest(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик ошибок"""
-    logger.error("Exception while handling an update:", exc_info=context.error)
+    logging.error("Exception while handling an update:", exc_info=context.error)
 
     if update and update.effective_message:
         await update.effective_message.reply_text("😕 Произошла ошибка. Пожалуйста, попробуйте позже.")
