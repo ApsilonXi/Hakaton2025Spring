@@ -1,5 +1,6 @@
 import psycopg2
 import time
+import tgbot as tg
 
 class News:
     def __init__(self, login: str, password: str):
@@ -17,21 +18,23 @@ class News:
             print("[INFO] PostgreSQL connection open.")
         except Exception as ex:
             print(f"[ERROR] Connection failed: {ex}")
+
+        self.tg_bot = tg.NewsNotifier(self.conn)
             
     def on_close(self):
         if hasattr(self, 'conn') and self.conn:
             self.conn.close()
             print("[INFO] PostgreSQL connection closed.")
 
-    def check_user_exist(self, login: str):
+    def check_user_exist(self, login: str, password: str):
         '''Проверка существования логина пользователя'''
         try:
             self.cursor.execute("""
-                SELECT * 
+                SELECT (password = crypt(%s, password)) AS is_valid 
                   FROM users
                  WHERE login = %s
                  LIMIT 1;
-                """, (login,))
+                """, (password, login))
             user = self.cursor.fetchall()
             if user != []:
                 return True
@@ -169,7 +172,7 @@ class News:
             if self.check_user_exist(login):
                 self.cursor.execute("""
                     INSERT INTO users (login, password, role)
-                    VALUES (%s, %s, %s); 
+                    VALUES (%s, crypt(%s, gen_salt('bf')), %s); 
                     """, (login, password, role))
                 self.conn.commit()
         except Exception as e:
