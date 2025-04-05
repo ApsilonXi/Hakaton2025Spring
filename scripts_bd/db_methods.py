@@ -6,7 +6,7 @@ import hashlib
 import uuid
 
 class NewsDB:
-    def __init__(self, dbname='news_db', user='postgres', password='password', host='localhost'):
+    def __init__(self, dbname='news_db', user='postgres', password='12345', host='localhost'):
         """Инициализация подключения к базе данных"""
         self.conn = psycopg2.connect(
             dbname=dbname,
