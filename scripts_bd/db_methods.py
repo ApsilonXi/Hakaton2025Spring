@@ -2,7 +2,7 @@ import psycopg2
 import time
 import tgbot as tg
 
-class News:
+class NewsDB:
     def __init__(self, login: str, password: str):
         self.login = login
         self.password = password 
@@ -306,14 +306,43 @@ class News:
         '''Редактирование новости на сайте'''
         try:
             if self.check_news_exist(news_title, news_content):
-                sql = "SET "
-                self.cursor.execute("""
-                    UPDATE news
-                       SET 
-                    """)
+                fields = []
+                params = []
+                
+                if type_news is not None:
+                    fields.append("type_news = ?")
+                    params.append(type_news)
+                if news_title is not None:
+                    fields.append("news_title = ?")
+                    params.append(news_title)
+                if news_content is not None:
+                    fields.append("news_content = ?")
+                    params.append(news_content)
+                if date is not None:
+                    fields.append("date = ?")
+                    params.append(date)
+                if status is not None:
+                    fields.append("status = ?")
+                    params.append(status)
+                if tags is not None:
+                    fields.append("tags = ?")
+                    params.append(tags)
+                if source is not None:
+                    fields.append("source = ?")
+                    params.append(source)
+                
+                if fields:
+                    sql = "UPDATE news SET " + ", ".join(fields) + " WHERE news_title = ? OR news_content = ?"
+                    params.extend([news_title, news_content])
+                    self.cursor.execute(sql, params)
+                    self.conn.commit()
+                else:
+                    print('[TRANSACTION] No fields to update')
         except Exception as e:
             self.conn.rollback()
             print(f'[TRANSACTION] Failed update news in database: {e}')
+
+
 
 
 

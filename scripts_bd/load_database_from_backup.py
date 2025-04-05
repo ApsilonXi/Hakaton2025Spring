@@ -1,4 +1,4 @@
-from scripts_bd.db_config import *
+from db_config import *
 
 # функция чтобы загружать всю базу данных себе из sql файла бекапа
 def restore_backup(backup_file:str, new_db_name:str, password:str):
