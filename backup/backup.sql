@@ -272,7 +272,7 @@ ALTER TABLE public.user_tag_subscriptions OWNER TO postgres;
 CREATE TABLE public.users (
     id integer NOT NULL,
     user_login character(20) NOT NULL,
-    user_password character(20) NOT NULL,
+    user_password character(100) NOT NULL,
     user_role character(15) NOT NULL,
     notification character(20) DEFAULT '0'::bpchar,
     tag_subscription integer,
@@ -459,10 +459,10 @@ COPY public.user_tag_subscriptions (user_id, tag_id) FROM stdin;
 --
 
 COPY public.users (id, user_login, user_password, user_role, notification, tag_subscription, sources_subsc) FROM stdin;
-1	admin               	admin123            	admin          	1                   	\N	\N
-4	moderator           	mod123              	verified       	1                   	\N	\N
-3	regular_user        	user123             	user           	0                   	2	1
-2	verified_user       	user123             	verified       	1                   	1	2
+1	admin               	admin123                                                                                            	admin          	1                   	\N	\N
+4	moderator           	mod123                                                                                              	verified       	1                   	\N	\N
+3	regular_user        	user123                                                                                             	user           	0                   	2	1
+2	verified_user       	user123                                                                                             	verified       	1                   	1	2
 \.
 
 
