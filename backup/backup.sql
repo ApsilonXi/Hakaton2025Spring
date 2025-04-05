@@ -432,6 +432,12 @@ COPY public.tags_news (id, tagid, newsid) FROM stdin;
 --
 
 COPY public.user_source_subscriptions (user_id, source_id) FROM stdin;
+2	2
+3	1
+3	3
+4	1
+4	2
+4	3
 \.
 
 
@@ -440,6 +446,11 @@ COPY public.user_source_subscriptions (user_id, source_id) FROM stdin;
 --
 
 COPY public.user_tag_subscriptions (user_id, tag_id) FROM stdin;
+2	2
+3	4
+3	5
+4	1
+4	3
 \.
 
 
