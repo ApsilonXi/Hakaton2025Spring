@@ -29,6 +29,8 @@ class NewsDB:
     
     def _check_password(self, hashed_password: str, user_password: str) -> bool:
         """Проверка пароля"""
+        if not hashed_password or ':' not in hashed_password:
+            return False
         password, salt = hashed_password.split(':')
         return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
     
