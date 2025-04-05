@@ -1,7 +1,5 @@
 import logging
-from telegram import Update, Bot
-from telegram.ext import Updater, CommandHandler, CallbackContext
-import psycopg2
+from telegram import Bot
 from datetime import datetime, timedelta
 
 # Настройка логирования
@@ -11,23 +9,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class NewsNotifier:
-    def __init__(self, token: str, db_params: dict, base_url: str):
-        self.bot = Bot(token=token)
-        self.db_params = db_params
-        self.base_url = base_url  # Базовый URL вашего сайта
-        self.conn = None
-        
-    def connect_db(self):
-        """Подключение к базе данных"""
-        try:
-            self.conn = psycopg2.connect(**self.db_params)
-            logger.info("Успешное подключение к базе данных")
-        except Exception as e:
-            logger.error(f"Ошибка подключения к БД: {e}")
-            raise
+CONFIG = {
+    'token': '7530398431:AAFnSCkcu4_XaeRJ7Cz3_RRZ2O-wfYERous',
+    'base_url': 'https://ваш-сайт.ru',
+    'channel_id': '@factosphera_bot'  
+}
 
-    def get_latest_news(self, hours: int = 24):
+class NewsNotifier:
+    def __init__(self, connection):
+        self.bot = Bot(token=CONFIG['token'])
+        self.conn = connection
+        self.base_url = CONFIG['base_url']  
+
+    def start_bot(self):
+        notifier = NewsNotifier(
+            token=CONFIG['token'],
+            base_url=CONFIG['base_url']
+        )
+        notifier.send_news_to_channel(CONFIG['channel_id'])
+
+    def get_latest_news(self, hours: int = 4):
         """Получение свежих новостей за последние N часов"""
         try:
             cursor = self.conn.cursor()
@@ -85,28 +86,4 @@ class NewsNotifier:
             if self.conn:
                 self.conn.close()
 
-# Конфигурация
-CONFIG = {
-    'token': 'ВАШ_TELEGRAM_BOT_TOKEN',
-    'db_params': {
-        'dbname': 'ваша_база',
-        'user': 'ваш_пользователь',
-        'password': 'ваш_пароль',
-        'host': 'ваш_хост'
-    },
-    'base_url': 'https://ваш-сайт.ru',
-    'channel_id': '@ваш_канал'  # Или ID чата
-}
 
-def main():
-    notifier = NewsNotifier(
-        token=CONFIG['token'],
-        db_params=CONFIG['db_params'],
-        base_url=CONFIG['base_url']
-    )
-    
-    # Отправляем новости
-    notifier.send_news_to_channel(CONFIG['channel_id'])
-
-if __name__ == '__main__':
-    main()

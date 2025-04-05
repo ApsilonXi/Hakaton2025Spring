@@ -1,4 +1,4 @@
-from db_config import *
+from scripts_db.db_config import *
 
 '''ручной ввод: "C:\Program Files\PostgreSQL\17\bin\pg_dump" -U postgres -h localhost -p 5432 -d news_bd -F c -f "D:\GitGub\Hakaton2025Spring\backup\backup.sql"'''
 
