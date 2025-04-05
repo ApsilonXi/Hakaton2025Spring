@@ -23,7 +23,7 @@ class NewsDB:
         self.conn.close()
     
     def _hash_password(self, password: str) -> str:
-        """Хеширование пароля"""
+        """Хеширование пароля с солью"""
         salt = uuid.uuid4().hex
         return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
     
@@ -136,21 +136,6 @@ class NewsDB:
         )
         self.cursor.execute(query, params)
         return self.cursor.rowcount > 0
-<<<<<<< HEAD
-
-    def all_users(self):
-        '''Все пользователи сайта'''
-        self.cursor.execute("""
-            SELECT id, user_login FROM users;
-=======
-    
-    def all_users(self):
-        '''Получение всех пользователей БД'''
-        self.cursor.execute("""
-            SELECT id, user_login FROM users; 
->>>>>>> emiliya
-            """)
-        return self.cursor.fetchall()
     
     # Методы для работы с новостями
     def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None, 
