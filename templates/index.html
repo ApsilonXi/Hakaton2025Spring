@@ -13,17 +13,14 @@
     <!-- Навигация - всегда слева -->
     <div class="nav-container p-3 col-lg-2">
         <div class="nav-upper">
-            <h1 class="site-title fs-4">Портал новостей</h1>
+            <h1 class="site-title fs-4"><img src="static/logo.svg" alt="Фактосфера" class="logo"></h1>
             <div class="nav-buttons mt-3">
-                <!-- ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ В СИСТЕМЕ -->
-                <button class="registry-button">Регистрация</button>
-                <button class="login-button">Вход</button>
-                <!-- ЕСЛИ ПОЛЬЗОВАТЕЛЬ В СИСТЕМЕ -->
+                <a href="{{ url_for('register') }}"><button class="registry-button">Регистрация</button></a>
+                <a href="{{ url_for('login') }}"><button class="login-button">Вход</button></a>
                 <button class="my-account-button d-none">Личный кабинет</button>
                 <button class="my-tags-button d-none">Мои теги</button>
                 <button class="my-follows-button d-none">Мои подписки</button>
                 <button class="logout-button d-none">Выйти</button>
-                <!-- ЕСЛИ АДМИН В СИСТЕМЕ -->
                 <button class="news-requests-button d-none">Предложенные новости</button>
             </div>
         </div>
@@ -32,104 +29,105 @@
         </div>
     </div>
 
-    <!-- Основной контент и боковая панель в одном контейнере -->
+    <!-- Основной контент и боковая панель -->
     <div class="d-flex flex-column flex-lg-row flex-grow-1">
-        <!-- На мобильных side-container будет сверху -->
+        <!-- Боковая панель -->
         <div class="side-container p-3 col-lg-3 order-lg-2">
-            <div class="admin-news mb-4">
-                <h1 class="fs-4">Актуальное</h1>
-                <div class="admin-cards-container">
-                    <div class="admin-cards" id="adminCards">
-                        <a href="#">
-                            <div class="admin-card">
-                                <h3 class="a-title fs-5">Новость 1</h3>
-                                <p class="a-date small text-muted">01.01.2001</p>
-                                <p class="a-news-text">Краткое содержание новости 1</p>
-                            </div>
-                        </a>
-                        <a href="#">
-                            <div class="admin-card">
-                                <h3 class="a-title fs-5">Новость 2</h3>
-                                <p class="a-date small text-muted">02.01.2001</p>
-                                <p class="a-news-text">Краткое содержание новости 2</p>
-                            </div>
-                        </a>
-                        <a href="#">
-                            <div class="admin-card">
-                                <h3 class="a-title fs-5">Новость 3</h3>
-                                <p class="a-date small text-muted">03.01.2001</p>
-                                <p class="a-news-text">Краткое содержание новости 3</p>
-                            </div>
-                        </a>
-                        <a href="#">
-                            <div class="admin-card">
-                                <h3 class="a-title fs-5">Новость 4</h3>
-                                <p class="a-date small text-muted">04.01.2001</p>
-                                <p class="a-news-text">Краткое содержание новости 4</p>
-                            </div>
-                        </a>
-                        <a href="#">
-                            <div class="admin-card">
-                                <h3 class="a-title fs-5">Новость 5</h3>
-                                <p class="a-date small text-muted">05.01.2001</p>
-                                <p class="a-news-text">Краткое содержание новости 5</p>
-                            </div>
-                        </a>
+                <div class="admin-news mb-4">
+                    <h1 class="fs-4">Актуальное</h1>
+                    <div class="admin-cards-container">
+                        <div class="admin-cards" id="adminCards">
+                            <a href="#">
+                                <div class="admin-card">
+                                    <h3 class="a-title fs-5">Новость 1</h3>
+                                    <p class="a-date small text-muted">01.01.2001</p>
+                                    <p class="a-news-text">Краткое содержание новости 1</p>
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="admin-card">
+                                    <h3 class="a-title fs-5">Новость 2</h3>
+                                    <p class="a-date small text-muted">02.01.2001</p>
+                                    <p class="a-news-text">Краткое содержание новости 2</p>
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="admin-card">
+                                    <h3 class="a-title fs-5">Новость 3</h3>
+                                    <p class="a-date small text-muted">03.01.2001</p>
+                                    <p class="a-news-text">Краткое содержание новости 3</p>
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="admin-card">
+                                    <h3 class="a-title fs-5">Новость 4</h3>
+                                    <p class="a-date small text-muted">04.01.2001</p>
+                                    <p class="a-news-text">Краткое содержание новости 4</p>
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="admin-card">
+                                    <h3 class="a-title fs-5">Новость 5</h3>
+                                    <p class="a-date small text-muted">05.01.2001</p>
+                                    <p class="a-news-text">Краткое содержание новости 5</p>
+                                </div>
+                            </a>
+                        </div>
+                        <!-- Индикатор прокрутки для admin-cards -->
+                        <div class="scroll-indicator" id="adminScrollIndicator">
+                            <div class="scroll-dot active"></div>
+                            <div class="scroll-dot"></div>
+                            <div class="scroll-dot"></div>
+                            <div class="scroll-dot"></div>
+                            <div class="scroll-dot"></div>
+                        </div>
                     </div>
-                    <!-- Индикатор прокрутки для admin-cards -->
-                    <div class="scroll-indicator" id="adminScrollIndicator">
-                        <div class="scroll-dot active"></div>
-                        <div class="scroll-dot"></div>
-                        <div class="scroll-dot"></div>
-                        <div class="scroll-dot"></div>
-                        <div class="scroll-dot"></div>
+                </div>
+    
+                <div class="saved">
+                    <h1 class="fs-4">Сохраненные</h1>
+                    <div class="saved-cards-container">
+                        <div class="saved-cards" id="savedCards">
+                            <a href="#">
+                                <div class="saved-card">
+                                    <h3 class="s-title fs-5">Сохраненная 1</h3>
+                                    <p class="s-date small text-muted">01.01.2001</p>
+                                    <p class="s-news-text">Краткое содержание сохраненной новости 1</p>
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="saved-card">
+                                    <h3 class="s-title fs-5">Сохраненная 2</h3>
+                                    <p class="s-date small text-muted">02.01.2001</p>
+                                    <p class="s-news-text">Краткое содержание сохраненной новости 2</p>
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="saved-card">
+                                    <h3 class="s-title fs-5">Сохраненная 3</h3>
+                                    <p class="s-date small text-muted">03.01.2001</p>
+                                    <p class="s-news-text">Краткое содержание сохраненной новости 3</p>
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="saved-card">
+                                    <h3 class="s-title fs-5">Сохраненная 4</h3>
+                                    <p class="s-date small text-muted">04.01.2001</p>
+                                    <p class="s-news-text">Краткое содержание сохраненной новости 4</p>
+                                </div>
+                            </a>
+                        </div>
+                        <!-- Индикатор прокрутки для saved-cards -->
+                        <div class="scroll-indicator" id="savedScrollIndicator">
+                            <div class="scroll-dot active"></div>
+                            <div class="scroll-dot"></div>
+                            <div class="scroll-dot"></div>
+                            <div class="scroll-dot"></div>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div class="saved">
-                <h1 class="fs-4">Сохраненные</h1>
-                <div class="saved-cards-container">
-                    <div class="saved-cards" id="savedCards">
-                        <a href="#">
-                            <div class="saved-card">
-                                <h3 class="s-title fs-5">Сохраненная 1</h3>
-                                <p class="s-date small text-muted">01.01.2001</p>
-                                <p class="s-news-text">Краткое содержание сохраненной новости 1</p>
-                            </div>
-                        </a>
-                        <a href="#">
-                            <div class="saved-card">
-                                <h3 class="s-title fs-5">Сохраненная 2</h3>
-                                <p class="s-date small text-muted">02.01.2001</p>
-                                <p class="s-news-text">Краткое содержание сохраненной новости 2</p>
-                            </div>
-                        </a>
-                        <a href="#">
-                            <div class="saved-card">
-                                <h3 class="s-title fs-5">Сохраненная 3</h3>
-                                <p class="s-date small text-muted">03.01.2001</p>
-                                <p class="s-news-text">Краткое содержание сохраненной новости 3</p>
-                            </div>
-                        </a>
-                        <a href="#">
-                            <div class="saved-card">
-                                <h3 class="s-title fs-5">Сохраненная 4</h3>
-                                <p class="s-date small text-muted">04.01.2001</p>
-                                <p class="s-news-text">Краткое содержание сохраненной новости 4</p>
-                            </div>
-                        </a>
-                    </div>
-                    <!-- Индикатор прокрутки для saved-cards -->
-                    <div class="scroll-indicator" id="savedScrollIndicator">
-                        <div class="scroll-dot active"></div>
-                        <div class="scroll-dot"></div>
-                        <div class="scroll-dot"></div>
-                        <div class="scroll-dot"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    
 
         <!-- Основной контент -->
         <div class="main-container p-3 flex-grow-1 order-lg-1">
@@ -139,24 +137,33 @@
                     <button class="following-button">Подписки</button>
                 </div>
                 <div class="rsb">
-                    <button class="sort-menu">Sort</button>
+                    <div class="dropdown">
+                        <button class="sort-menu dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            Сортировка
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                            <li><a class="dropdown-item" href="#" data-sort="date-asc">По дате (сначала старые)</a></li>
+                            <li><a class="dropdown-item" href="#" data-sort="date-desc">По дате (сначала новые)</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             
-            <div class="content">
+            <div class="content" id="newsContainer">
                 <div class="search mb-3">
                     <input type="text" class="w-100" placeholder="Поиск...">
                 </div>
                 
-                <div class="news-card">
+                <!-- Пример новостей с разными датами -->
+                <div class="news-card" data-date="2024-01-15">
                     <div class="card">
                         <div class="card-upper">
-                            <h2 class="title fs-4">Заголовок</h2>
-                            <p class="date text-muted small">01.01.2001</p>
-                            <p class="news-text my-2">Текст новости. Здесь будет содержимое новости, которое может быть достаточно длинным и занимать несколько строк.</p>
+                            <h2 class="title fs-4">Новость от 15 января</h2>
+                            <p class="date text-muted small">15.01.2024</p>
+                            <p class="news-text my-2">Содержание новости за 15 января.</p>
                         </div>
                         <div class="card-lower">
-                            <p class="news-author small text-muted">Автор</p>
+                            <p class="news-author small text-muted">Автор 1</p>
                             <p class="card-buttons">
                                 <a href=""><button class="show-button">Прочитать</button></a>
                                 <button class="save-button">Сохранить</button>
@@ -166,16 +173,51 @@
                     </div>
                 </div>
                 
-                <!-- Дополнительные карточки новостей -->
-                <div class="news-card mt-3">
+                <div class="news-card" data-date="2024-01-20">
                     <div class="card">
                         <div class="card-upper">
-                            <h2 class="title fs-4">Другой заголовок</h2>
-                            <p class="date text-muted small">02.01.2001</p>
-                            <p class="news-text my-2">Еще один текст новости. Разные новости могут иметь разную длину содержимого.</p>
+                            <h2 class="title fs-4">Новость от 20 января</h2>
+                            <p class="date text-muted small">20.01.2024</p>
+                            <p class="news-text my-2">Содержание новости за 20 января.</p>
                         </div>
                         <div class="card-lower">
-                            <p class="news-author small text-muted">Другой автор</p>
+                            <p class="news-author small text-muted">Автор 2</p>
+                            <p class="card-buttons">
+                                <a href=""><button class="show-button">Прочитать</button></a>
+                                <button class="save-button">Сохранить</button>
+                                <button class="share-button">Поделиться</button>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="news-card" data-date="2024-01-10">
+                    <div class="card">
+                        <div class="card-upper">
+                            <h2 class="title fs-4">Новость от 10 января</h2>
+                            <p class="date text-muted small">10.01.2024</p>
+                            <p class="news-text my-2">Содержание новости за 10 января.</p>
+                        </div>
+                        <div class="card-lower">
+                            <p class="news-author small text-muted">Автор 3</p>
+                            <p class="card-buttons">
+                                <a href=""><button class="show-button">Прочитать</button></a>
+                                <button class="save-button">Сохранить</button>
+                                <button class="share-button">Поделиться</button>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="news-card" data-date="2024-01-25">
+                    <div class="card">
+                        <div class="card-upper">
+                            <h2 class="title fs-4">Новость от 25 января</h2>
+                            <p class="date text-muted small">25.01.2024</p>
+                            <p class="news-text my-2">Содержание новости за 25 января.</p>
+                        </div>
+                        <div class="card-lower">
+                            <p class="news-author small text-muted">Автор 4</p>
                             <p class="card-buttons">
                                 <a href=""><button class="show-button">Прочитать</button></a>
                                 <button class="save-button">Сохранить</button>
@@ -187,34 +229,8 @@
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Функция для обновления индикатора прокрутки
-        function updateScrollIndicator(containerId, indicatorId) {
-            const container = document.getElementById(containerId);
-            const indicator = document.getElementById(indicatorId);
-            const dots = indicator.querySelectorAll('.scroll-dot');
-            
-            if (!container || !indicator) return;
-            
-            container.addEventListener('scroll', () => {
-                const scrollPosition = container.scrollLeft;
-                const cardWidth = container.querySelector('a').offsetWidth;
-                const activeIndex = Math.round(scrollPosition / cardWidth);
-                
-                dots.forEach((dot, index) => {
-                    dot.classList.toggle('active', index === activeIndex);
-                });
-            });
-        }
-        
-        // Инициализация для обоих контейнеров
-        document.addEventListener('DOMContentLoaded', () => {
-            updateScrollIndicator('adminCards', 'adminScrollIndicator');
-            updateScrollIndicator('savedCards', 'savedScrollIndicator');
-        });
-    </script>
+    <script src="{{ url_for('static', filename='jscript.js') }}"></script>
+
 </body>
 </html>
-

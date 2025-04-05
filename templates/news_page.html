@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Портал новостей</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="d-flex flex-column flex-lg-row">
+    <!-- Навигация - всегда слева -->
+    <div class="nav-container p-3 col-lg-2">
+        <div class="nav-upper">
+            <h1 class="site-title fs-4"><img src="static/logo.svg" alt="Фактосфера" class="logo"></h1>
+            <div class="nav-buttons mt-3">
+                <!-- ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ В СИСТЕМЕ -->
+                <button class="registry-button">Регистрация</button>
+                <button class="login-button">Вход</button>
+                <!-- ЕСЛИ ПОЛЬЗОВАТЕЛЬ В СИСТЕМЕ -->
+                <button class="my-account-button d-none">Личный кабинет</button>
+                <button class="my-tags-button d-none">Мои теги</button>
+                <button class="my-follows-button d-none">Мои подписки</button>
+                <button class="logout-button d-none">Выйти</button>
+                <!-- ЕСЛИ АДМИН В СИСТЕМЕ -->
+                <button class="news-requests-button d-none">Предложенные новости</button>
+            </div>
+        </div>
+        <div class="nav-lower mt-3">
+            <button class="suggest-news-button w-100">Предложить новость</button>
+        </div>
+    </div>
+
+    <!-- Основной контент и боковая панель в одном контейнере -->
+    <div class="d-flex flex-column flex-lg-row flex-grow-1">
+        <!-- На мобильных side-container будет сверху -->
+        <div class="side-container p-3 col-lg-3 order-lg-2">
+            <div class="admin-news mb-4">
+                <h1 class="fs-4">Актуальное</h1>
+                <div class="admin-cards-container">
+                    <div class="admin-cards" id="adminCards">
+                        <a href="#">
+                            <div class="admin-card">
+                                <h3 class="a-title fs-5">Новость 1</h3>
+                                <p class="a-date small text-muted">01.01.2001</p>
+                                <p class="a-news-text">Краткое содержание новости 1</p>
+                            </div>
+                        </a>
+                        <a href="#">
+                            <div class="admin-card">
+                                <h3 class="a-title fs-5">Новость 2</h3>
+                                <p class="a-date small text-muted">02.01.2001</p>
+                                <p class="a-news-text">Краткое содержание новости 2</p>
+                            </div>
+                        </a>
+                        <a href="#">
+                            <div class="admin-card">
+                                <h3 class="a-title fs-5">Новость 3</h3>
+                                <p class="a-date small text-muted">03.01.2001</p>
+                                <p class="a-news-text">Краткое содержание новости 3</p>
+                            </div>
+                        </a>
+                        <a href="#">
+                            <div class="admin-card">
+                                <h3 class="a-title fs-5">Новость 4</h3>
+                                <p class="a-date small text-muted">04.01.2001</p>
+                                <p class="a-news-text">Краткое содержание новости 4</p>
+                            </div>
+                        </a>
+                        <a href="#">
+                            <div class="admin-card">
+                                <h3 class="a-title fs-5">Новость 5</h3>
+                                <p class="a-date small text-muted">05.01.2001</p>
+                                <p class="a-news-text">Краткое содержание новости 5</p>
+                            </div>
+                        </a>
+                    </div>
+                    <!-- Индикатор прокрутки для admin-cards -->
+                    <div class="scroll-indicator" id="adminScrollIndicator">
+                        <div class="scroll-dot active"></div>
+                        <div class="scroll-dot"></div>
+                        <div class="scroll-dot"></div>
+                        <div class="scroll-dot"></div>
+                        <div class="scroll-dot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="saved">
+                <h1 class="fs-4">Сохраненные</h1>
+                <div class="saved-cards-container">
+                    <div class="saved-cards" id="savedCards">
+                        <a href="#">
+                            <div class="saved-card">
+                                <h3 class="s-title fs-5">Сохраненная 1</h3>
+                                <p class="s-date small text-muted">01.01.2001</p>
+                                <p class="s-news-text">Краткое содержание сохраненной новости 1</p>
+                            </div>
+                        </a>
+                        <a href="#">
+                            <div class="saved-card">
+                                <h3 class="s-title fs-5">Сохраненная 2</h3>
+                                <p class="s-date small text-muted">02.01.2001</p>
+                                <p class="s-news-text">Краткое содержание сохраненной новости 2</p>
+                            </div>
+                        </a>
+                        <a href="#">
+                            <div class="saved-card">
+                                <h3 class="s-title fs-5">Сохраненная 3</h3>
+                                <p class="s-date small text-muted">03.01.2001</p>
+                                <p class="s-news-text">Краткое содержание сохраненной новости 3</p>
+                            </div>
+                        </a>
+                        <a href="#">
+                            <div class="saved-card">
+                                <h3 class="s-title fs-5">Сохраненная 4</h3>
+                                <p class="s-date small text-muted">04.01.2001</p>
+                                <p class="s-news-text">Краткое содержание сохраненной новости 4</p>
+                            </div>
+                        </a>
+                    </div>
+                    <!-- Индикатор прокрутки для saved-cards -->
+                    <div class="scroll-indicator" id="savedScrollIndicator">
+                        <div class="scroll-dot active"></div>
+                        <div class="scroll-dot"></div>
+                        <div class="scroll-dot"></div>
+                        <div class="scroll-dot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Основной контент -->
+        <div class="main-container p-3 flex-grow-1 order-lg-1">
+            
+            <div class="content">
+                <div class="fullnews">
+                    <div class="fnews-heading">
+                        <h5 class="fnews-date">
+                            01.01.2001
+                        </h5>
+                        <h5 class="fnews-tags">
+                            Теги
+                        </h5>
+                    </div> <!-- дата теги итд-->
+                    <div class="fnew-container"> <!--основной контейнер новости-->
+                        <div class="fnew-upper"> <!-- верхняя часть: заголовок, текст -->
+                            <h1>
+                                Заголовок
+                            </h1>
+                            <p>
+                                Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum necessitatibus harum eaque! Dicta, alias tempora eum ipsa excepturi minima quidem illum rerum distinctio porro dolor, quae autem fugiat corrupti sunt.
+                                Lorem ipsum dolor sit amet consectetur adipisicing elit. Similique illo repudiandae dolores quasi quos ab accusantium natus magni praesentium dolorum vel suscipit repellat perspiciatis laudantium quam labore qui, beatae explicabo.
+                                Lorem ipsum dolor, sit amet consectetur adipisicing elit. Nostrum error fugiat saepe. Praesentium itaque necessitatibus explicabo repudiandae optio dolorem tempore, enim veniam quibusdam, laborum mollitia. Excepturi iusto facilis quo animi.
+                                Lorem, ipsum dolor sit amet consectetur adipisicing elit. Excepturi consequuntur repudiandae nam ex modi nihil facere provident praesentium autem deleniti accusantium iste aliquam, quaerat aut, in fuga, dolorem tempora beatae?
+                                Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam facilis cumque iste quas ut neque eos sint mollitia illo commodi repellendus, esse minima necessitatibus officiis tempora, similique inventore quo sequi.
+                                Lorem ipsum, dolor sit amet consectetur adipisicing elit. Quos accusamus temporibus ad, minus pariatur iure dolorum est. Nobis corporis velit perspiciatis quos, voluptatibus porro quisquam quia doloribus voluptatem iusto? Nisi.
+                            </p>
+                        </div>
+                        <div class="fnew-lower"> <!-- нижняя часть: панель управления (поделиится, источник, сохранить, назад) -->
+                            <button class="fnew-share-button">
+                                Поделиться
+                            </button>
+                            <button class="fnew-source-button">
+                                Источник
+                            </button>
+                            <button class="fnew-save-button">
+                                Сохранить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='jscript.js') }}"></script>
+    <script src="{{ url_for('static', filename='styles.css') }}"></script>
+
+</body>
+</html>
+
