@@ -107,14 +107,6 @@ class NewsDB:
         )
         return self.cursor.rowcount > 0
 
-    def set_notification_preference(self, user_id: int, preference: str) -> bool:
-        """Установка предпочтений уведомлений"""
-        self.cursor.execute(
-            "UPDATE users SET notification = %s WHERE id = %s",
-            (preference, user_id)
-        )
-        return self.cursor.rowcount > 0
-
     def update_subscriptions(self, user_id: int, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> bool:
         """Обновление подписок пользователя"""
         updates = []
@@ -322,8 +314,22 @@ class NewsDB:
         return self.cursor.rowcount > 0
 
     def update_user_telegram_id(self, user_id: int, telegram_id: int):
-        self.cursor.execute(
-            "UPDATE users SET telegram_id = %s WHERE id = %s",
-            (telegram_id, user_id)
-        )
-        return self.cursor.rowcount > 0
+        print(f"ТГ токен пользователя {user_id} установлен на {telegram_id} ")
+        try:
+            self.cursor.execute(
+                "UPDATE users SET telegram_id = %s WHERE id = %s",
+                (telegram_id, user_id)
+            )
+            self.conn.commit()
+        except Exception as e:
+            self.conn.rollback()
+
+    def update_subscribe(self, user_id: int, subscribe_mod: str):
+        try:
+            self.cursor.execute(
+                "UPDATE users SET notification = %s WHERE id = %s",
+                (subscribe_mod, user_id)
+            )
+            self.conn.commit()
+        except Exception as e:
+            self.conn.rollback()
