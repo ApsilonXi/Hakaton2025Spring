@@ -20,6 +20,7 @@ create table news (
 	type_news boolean not null,
 	news_title text not null,
 	news_content text not null,
+	date timestamp not null,
 	status boolean not null,
 	tagID serial not null,
 	sourceID serial not null,
