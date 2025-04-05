@@ -85,21 +85,30 @@ class NewsDB:
         }
     
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
-        """Смена пароля пользователя
-           :return: True если пароль успешно изменен, иначе False"""
+        """Смена пароля пользователя с использованием SQL-функций
+        :return: True если пароль успешно изменен, иначе False"""
+        
+        # 1. Проверяем старый пароль
         self.cursor.execute(
-            "SELECT user_password FROM users WHERE id = %s",
-            (user_id,)
+            "SELECT authenticate_user(user_login, %s) AS auth_result FROM users WHERE id = %s",
+            (old_password, user_id)
         )
         result = self.cursor.fetchone()
         
-        if not result or not self._check_password(result['user_password'], old_password):
+        if not result or not result['auth_result']:
             return False
         
-        new_hashed_password = self._hash_password(new_password)
+        # 2. Хешируем новый пароль с помощью SQL-функции crypt
+        self.cursor.execute(
+            "SELECT crypt(%s, gen_salt('bf')) AS new_hash",
+            (new_password,)
+        )
+        new_hash = self.cursor.fetchone()['new_hash']
+        
+        # 3. Обновляем пароль в базе
         self.cursor.execute(
             "UPDATE users SET user_password = %s WHERE id = %s",
-            (new_hashed_password, user_id)
+            (new_hash, user_id)
         )
         return True
     
