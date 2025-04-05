@@ -14,10 +14,33 @@ def index():
             'role': session['user']['role']
         }
     
-    # Получаем опубликованные новости из базы данных
+    # Получаем все опубликованные новости из базы данных
     news = DB.get_published_news()
     
-    return render_template("index.html", user_info=user_info, news=news)
+    # Фильтруем только актуальные новости (type_news == False)
+    actual_news = [item for item in news if not item['type_news']]
+    
+    return render_template("index.html", 
+                         user_info=user_info, 
+                         news=news,
+                         actual_news=actual_news[:5])  # Ограничиваем до 5 новостей
+
+@app.route("/news/<int:news_id>")
+def news_page(news_id):
+    # Получаем новость из базы данных
+    news_item = DB.get_news_by_id(news_id)
+    
+    if not news_item:
+        flash('Новость не найдена', 'error')
+        return redirect(url_for('index'))
+    
+    # Получаем актуальные новости для боковой панели
+    all_news = DB.get_published_news()
+    actual_news = [item for item in all_news if not item['type_news']]
+    
+    return render_template("news_page.html", 
+                         news_item=news_item,
+                         actual_news=actual_news[:5])
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():

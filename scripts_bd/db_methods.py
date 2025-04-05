@@ -249,27 +249,88 @@ class NewsDB:
         return news_id
 
     def get_published_news(self, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> List[Dict]:
-        """Получение опубликованных новостей с информацией об источниках
-        :return: список словарей с данными новостей, включая название источника и ссылку"""
+        """Получение опубликованных новостей с информацией об источниках и тегах
+        :return: список словарей с данными новостей, включая название источника, ссылку и теги"""
+        # Основной запрос для получения новостей
         query = """
-            SELECT n.*, s.name as source_name, s.link as source_link 
+            SELECT 
+                n.id,
+                n.type_news,
+                n.title,
+                n.content,
+                n.status,
+                n.source,
+                n.date,
+                s.name as source_name, 
+                s.link as source_link,
+                ARRAY_AGG(t.name) as tags
             FROM news n
             LEFT JOIN sources s ON n.source = s.id
+            LEFT JOIN tags_news tn ON n.id = tn.newsid
+            LEFT JOIN tags t ON tn.tagid = t.id
             WHERE n.status = TRUE
+            GROUP BY n.id, s.name, s.link
         """
         params = []
 
         if tag_id is not None:
-            query += " AND n.id IN (SELECT newsID FROM tags_news WHERE tagID = %s)"
+            query = query.replace("GROUP BY", "AND t.id = %s GROUP BY")
             params.append(tag_id)
 
         if source_id is not None:
-            query += " AND n.source = %s"
+            query = query.replace("GROUP BY", "AND n.source = %s GROUP BY")
             params.append(source_id)
 
         self.cursor.execute(query, params)
+<<<<<<< HEAD
         return [dict(row) for row in self.cursor.fetchall()]
 
+=======
+        news_items = []
+        
+        for row in self.cursor.fetchall():
+            item = dict(row)
+            # Очищаем теги от None и лишних пробелов
+            item['tags'] = [tag.strip() for tag in (item['tags'] or []) if tag]
+            news_items.append(item)
+        
+        return news_items
+    
+    def get_news_by_id(self, news_id: int) -> Optional[Dict]:
+        """Получение новости по ID с информацией о тегах и источнике
+        :param news_id: ID новости
+        :return: словарь с данными новости (включая список тегов) или None, если не найдена"""
+        # Получаем основную информацию о новости
+        news_query = """
+            SELECT 
+                n.*, 
+                s.name as source_name, 
+                s.link as source_link
+            FROM news n
+            LEFT JOIN sources s ON n.source = s.id
+            WHERE n.id = %s
+        """
+        self.cursor.execute(news_query, (news_id,))
+        news_item = self.cursor.fetchone()
+        
+        if not news_item:
+            return None
+        
+        news_item = dict(news_item)
+        
+        # Получаем все теги для этой новости
+        tags_query = """
+            SELECT t.name 
+            FROM tags_news tn
+            JOIN tags t ON tn.tagid = t.id
+            WHERE tn.newsid = %s
+        """
+        self.cursor.execute(tags_query, (news_id,))
+        news_item['tags'] = [row['name'].strip() for row in self.cursor.fetchall()]
+        
+        return news_item
+    
+>>>>>>> bella
     def get_news_for_moderation(self, admin_id: int) -> List[Dict]:
         """Получение новостей для модерации (админом)
            :return: список словарей с новостями для модерации или пустой список если пользователь не админ"""
