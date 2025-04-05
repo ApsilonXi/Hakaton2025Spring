@@ -7,7 +7,7 @@ def create_backup(password:str):
     """
 
     # Получаем параметры подключения из функции get_db_connection (файл db_config.py)
-    conn = get_db_connection('news_bd', 'postgres', '12345', 'localhost', '5432')
+    conn = get_db_connection('news_db', 'postgres', '12345', 'localhost', '5432')
     db_params = conn.get_dsn_parameters()
     conn.close()
 
