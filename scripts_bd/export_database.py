@@ -8,11 +8,7 @@ def create_backup(password:str):
     """
 
     # Получаем параметры подключения из функции get_db_connection (файл db_config.py)
-<<<<<<< HEAD
-    conn = get_db_connection()
-=======
     conn = get_db_connection('news_db', 'postgres', '12345', 'localhost', '5432')
->>>>>>> emiliya
     db_params = conn.get_dsn_parameters()
     conn.close()
 
@@ -28,7 +24,7 @@ def create_backup(password:str):
     host = db_params['host']
     port = db_params['port']
     database = db_params['dbname']
-    backup_file = os.path.join(f"{database}_backup_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.sql")
+    backup_file = os.path.join(f"backup/backup.sql")
 
     # Команда для выполнения резервного копирования
     command = [
@@ -51,3 +47,4 @@ def create_backup(password:str):
     ПРИМЕР ВЫЗОВА:
     create_backup("password")
 """
+create_backup('12345')
