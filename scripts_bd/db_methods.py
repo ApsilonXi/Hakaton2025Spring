@@ -24,21 +24,7 @@ class NewsDB:
            :return: None"""
         self.cursor.close()
         self.conn.close()
-<<<<<<< HEAD
     
-=======
-
-    def _hash_password(self, password: str) -> str:
-        """Хеширование пароля"""
-        salt = uuid.uuid4().hex
-        return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
-
-    def _check_password(self, hashed_password: str, user_password: str) -> bool:
-        """Проверка пароля"""
-        password, salt = hashed_password.split(':')
-        return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
-
->>>>>>> bella
     def _get_user_role(self, user_id: int) -> Optional[str]:
         """Получение роли пользователя
            :return: роль пользователя или None если пользователь не найден"""
@@ -98,11 +84,7 @@ class NewsDB:
             'login': user['user_login'].strip(),
             'role': user['user_role'].strip()
         }
-<<<<<<< HEAD
     
-=======
-
->>>>>>> bella
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
         """Смена пароля пользователя с использованием SQL-функций
         :return: True если пароль успешно изменен, иначе False"""
@@ -215,25 +197,16 @@ class NewsDB:
         )
         self.cursor.execute(query, params)
         return self.cursor.rowcount > 0
-<<<<<<< HEAD
     
     def all_users(self):
         '''Получение всех пользователей БД
            :return: список всех пользователей с их ID, логинами и настройками уведомлений'''
         self.cursor.execute("""
-            SELECT id, user_login, notification FROM users; 
-=======
-
-    def all_users(self):
-        '''Все пользователи сайта и статус подписки и телеграмм айди'''
-        self.cursor.execute("""
-            SELECT id, user_login, notification, telegram_id FROM users;
->>>>>>> bella
+            SELECT id, user_login, notification, telegram_id FROM users; 
             """)
         return self.cursor.fetchall()
 
     # Методы для работы с новостями
-<<<<<<< HEAD
     def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None, 
                 source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
         """Добавление новости:
@@ -258,58 +231,6 @@ class NewsDB:
 
         return news_id
 
-=======
-
-    def get_all_tags(self):
-        """Получение списка всех доступных тегов"""
-        self.cursor.execute("SELECT id, name FROM tags ORDER BY name")
-        return self.cursor.fetchall()
-
-    def get_or_create_source(self, link: str, name: str = None) -> int:
-        """Получение или создание источника по ссылке"""
-        self.cursor.execute("SELECT id FROM sources WHERE link = %s", (link,))
-        result = self.cursor.fetchone()
-        
-        if result:
-            return result['id']
-        
-        # Если имя не указано, используем домен из ссылки
-        if not name:
-            from urllib.parse import urlparse
-            name = urlparse(link).netloc or "Неизвестный источник"
-        
-        self.cursor.execute(
-            "INSERT INTO sources (name, link) VALUES (%s, %s) RETURNING id",
-            (name, link)
-        )
-        self.conn.commit()
-        return self.cursor.fetchone()['id']
-    def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None,
-                source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
-        """
-        Добавление новости:
-        - Всегда публикуется (status=True)
-        """
-        try:
-            self.cursor.execute(
-                """INSERT INTO news (title, content, status, tag, source, type_news)
-                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
-                (title, content, True, tag_id, source_id, not is_organization)  # Всегда status=True
-            )
-            news_id = self.cursor.fetchone()['id']
-
-            # Если указан тег, создаем связь в tags_news
-            if tag_id:
-                self.add_tag_to_news(user_id, news_id, tag_id)
-                
-            self.conn.commit()
-            return news_id
-        except Exception as e:
-            print(f"Error adding news: {e}")
-            self.conn.rollback()
-            return None
-
->>>>>>> bella
     def get_published_news(self, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> List[Dict]:
         """Получение опубликованных новостей с информацией об источниках и тегах
         :return: список словарей с данными новостей, включая название источника, ссылку и теги"""
@@ -344,55 +265,8 @@ class NewsDB:
             params.append(source_id)
 
         self.cursor.execute(query, params)
-<<<<<<< HEAD
         return [dict(row) for row in self.cursor.fetchall()]
 
-=======
-        news_items = []
-        
-        for row in self.cursor.fetchall():
-            item = dict(row)
-            # Очищаем теги от None и лишних пробелов
-            item['tags'] = [tag.strip() for tag in (item['tags'] or []) if tag]
-            news_items.append(item)
-        
-        return news_items
-    
-    def get_news_by_id(self, news_id: int) -> Optional[Dict]:
-        """Получение новости по ID с информацией о тегах и источнике
-        :param news_id: ID новости
-        :return: словарь с данными новости (включая список тегов) или None, если не найдена"""
-        # Получаем основную информацию о новости
-        news_query = """
-            SELECT 
-                n.*, 
-                s.name as source_name, 
-                s.link as source_link
-            FROM news n
-            LEFT JOIN sources s ON n.source = s.id
-            WHERE n.id = %s
-        """
-        self.cursor.execute(news_query, (news_id,))
-        news_item = self.cursor.fetchone()
-        
-        if not news_item:
-            return None
-        
-        news_item = dict(news_item)
-        
-        # Получаем все теги для этой новости
-        tags_query = """
-            SELECT t.name 
-            FROM tags_news tn
-            JOIN tags t ON tn.tagid = t.id
-            WHERE tn.newsid = %s
-        """
-        self.cursor.execute(tags_query, (news_id,))
-        news_item['tags'] = [row['name'].strip() for row in self.cursor.fetchall()]
-        
-        return news_item
-    
->>>>>>> bella
     def get_news_for_moderation(self, admin_id: int) -> List[Dict]:
         """Получение новостей для модерации (админом)
            :return: список словарей с новостями для модерации или пустой список если пользователь не админ"""
