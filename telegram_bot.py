@@ -1,6 +1,5 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from scripts_bd.db_methods import *
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -10,6 +9,8 @@ from telegram.ext import (
     filters
 )
 
+from scripts_bd.db_methods import *
+
 CONFIG = {
     'token': '7530398431:AAFnSCkcu4_XaeRJ7Cz3_RRZ2O-wfYERous',
     'base_url': 'https://ваш-сайт.ru',
@@ -17,6 +18,7 @@ CONFIG = {
 }
 
 # "База данных" пользователей
+user_db = {}
 db = NewsDB()
 
 
