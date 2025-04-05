@@ -12,7 +12,10 @@ body {
 a {
     text-decoration: none;
 }
+.logo {
+    height: 150px;
 
+}
 a:visited {
     color: black;
 }
@@ -22,11 +25,12 @@ a:visited {
 }
 
 .nav-container {
-    background-color: #f8f9fa;
+    background-color: whitesmoke;
     height: 100vh;
     position: sticky;
     top: 0;
     overflow-y: auto;
+    justify-content: space-between;
 }
 
 .nav-buttons {
@@ -48,7 +52,12 @@ a:visited {
     background-color: #e9ecef;
 }
 
-.sort-buttons button {
+
+.card button:hover {
+    background-color: #0d6efd;
+    color: white;
+}
+.sort-buttons button, .fnew-lower button, .nav-container button, .card button {
     background-color: whitesmoke;
     border: none;
     font-weight: bolder;
@@ -56,11 +65,13 @@ a:visited {
     padding: 0.3rem 0.8rem;
 }
 
-.sort-buttons button:hover {
+.sort-buttons button:hover, .fnew-lower button:hover, .nav-container button:hover {
     color: white;
     background-color: #0d6efd;
 }
-
+.card button {
+    font-weight: normal;
+}
 .search input {
     width: 100%;
     border-radius: 5px;
@@ -82,18 +93,7 @@ a:visited {
     padding: 1rem;
 }
 
-.card button {
-    border-radius: 20px;
-    border: none;
-    padding: 0.5rem 1rem;
-    background-color: transparent;
-    margin: 0 0.2rem;
-}
 
-.card button:hover {
-    background-color: #0d6efd;
-    color: white;
-}
 
 .card-lower {
     display: flex;
@@ -128,7 +128,24 @@ a:visited {
     background-color: #adb5bd;
     border-radius: 3px;
 }
-
+.fnews-heading {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+.fnew-upper {
+    font-family: var(--textfont);
+}
+.fnews-tags {
+    background-color: #0d6efd;
+    color: white;
+    border-radius: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+.fnew-container p{
+    text-align: justify;
+}
 /* Мобильная версия - горизонтальный скролл с одной карточкой */
 @media (max-width: 992px) {
     .nav-container {
@@ -139,7 +156,14 @@ a:visited {
     .side-container {
         order: -1;
     }
-    
+    .nav-container, .nav-buttons, .nav-upper {
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+    .nav-lower {
+        height: 100%;
+    }
     .admin-cards, .saved-cards {
         display: flex;
         overflow-x: auto;
@@ -192,4 +216,59 @@ a:visited {
         background-color: #0d6efd;
         transform: scale(1.2);
     }
+
+    .nav-container {
+        height: auto;
+        position: static;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        padding: 0.5rem !important;
+    }
+
+    .nav-upper {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center;
+        flex-wrap: nowrap !important;
+        gap: 0.5rem;
+        margin-right: 0.5rem;
+    }
+
+    .site-title {
+        margin-right: 0.5rem !important;
+    }
+
+    .nav-buttons {
+        display: inline-flex !important;
+        flex-direction: row !important;
+        gap: 0.5rem;
+        margin-top: 0 !important;
+        flex-wrap: nowrap !important;
+    }
+
+    .nav-lower {
+        display: inline-flex !important;
+        margin-top: 0 !important;
+        height: auto !important;
+    }
+
+    .suggest-news-button {
+        width: auto !important;
+        white-space: wrap !important;
+        display: inline-block !important;
+    }
+
+    /* Остальные стили для горизонтального скролла */
+    .nav-container::-webkit-scrollbar {
+        display: none;
+    }
+    .logo {
+        height: 70px;
+    }
+    
+    
 }
