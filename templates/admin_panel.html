@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Админ панель{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Административная панель</h1>
+    
+    <div class="users-list">
+        <table class="table table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Логин</th>
+                    <th>Роль</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users|sort(attribute='id') %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.user_login }}</td>
+                    <td>
+                        <select class="form-select user-role-select" data-user-id="{{ user.id }}">
+                            <option value="admin" {% if user.user_role == 'admin' %}selected{% endif %}>Админ</option>
+                            <option value="verified" {% if user.user_role == 'verified' %}selected{% endif %}>Верифицированный</option>
+                            <option value="user" {% if user.user_role == 'user' %}selected{% endif %}>Пользователь</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-danger delete-user" data-user-id="{{ user.id }}">Удалить</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка изменения роли пользователя
+    document.querySelectorAll('.user-role-select').forEach(select => {
+        // Сохраняем исходное значение роли
+        const initialValue = select.value;
+        
+        select.addEventListener('change', function() {
+            const userId = this.dataset.userId;
+            const newRole = this.value;
+            
+            // Подтверждение изменения
+            if (!confirm(`Вы уверены, что хотите изменить роль пользователя ${userId} на "${newRole}"?`)) {
+                this.value = initialValue;
+                return;
+            }
+            
+            fetch('/api/change_user_role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    new_role: newRole
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Роль успешно изменена');
+                    // Обновляем исходное значение после успешного изменения
+                    initialValue = newRole;
+                } else {
+                    alert('Ошибка при изменении роли: ' + (data.message || 'Неизвестная ошибка'));
+                    // Возвращаем предыдущее значение
+                    this.value = initialValue;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                this.value = initialValue;
+                alert('Произошла ошибка при отправке запроса');
+            });
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

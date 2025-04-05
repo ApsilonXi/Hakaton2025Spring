@@ -2,7 +2,6 @@ from class_News import News
 import requests
 from bs4 import BeautifulSoup
 
-
 def parse_science_rf():
     """
     Функция обработки сайта наука.рф

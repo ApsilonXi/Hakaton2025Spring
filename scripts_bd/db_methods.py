@@ -3,8 +3,7 @@ from psycopg2 import sql
 from psycopg2.extras import DictCursor
 from typing import Optional, List, Dict
 import hashlib
-import uuid
-
+from parsers.class_News import *
 
 class NewsDB:
     def __init__(self, dbname='news_db', user='postgres', password='12345', host='localhost'):
@@ -200,48 +199,51 @@ class NewsDB:
     
     def all_users(self):
         '''Получение всех пользователей БД
-           :return: список всех пользователей с их ID, логинами и настройками уведомлений'''
+        :return: список всех пользователей с их ID, логинами и настройками уведомлений'''
         self.cursor.execute("""
-            SELECT id, user_login, notification, telegram_id FROM users; 
+            SELECT id, user_login, notification, telegram_id, user_role FROM users; 
             """)
-        return self.cursor.fetchall()
+        return [dict(row) for row in self.cursor.fetchall()]
 
     # Методы для работы с новостями
     def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None, 
-                source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
+            source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
         """Добавление новости:
-           - Для верифицированных и админов: сразу публикуется (status=True)
-           - Для обычных: на модерацию (status=False)
-           :return: ID добавленной новости или None если добавление не удалось"""
+        - Все новости сначала попадают в offers на модерацию
+        :return: ID добавленной новости или None если добавление не удалось"""
         role = self._get_user_role(user_id)
         if role is None:
             return None
 
-        status = role in ('verified', 'admin')
+        try:
+            self.cursor.execute(
+                """INSERT INTO news (title, content, tag, source, type_news)
+                VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+                (title, content, tag_id, source_id, not is_organization)
+            )
+            news_id = self.cursor.fetchone()['id']
+            
+            self.cursor.execute(
+                "INSERT INTO offers (user_id, link) VALUES (%s, %s)",
+                (user_id, f"news_moderation:{news_id}")
+            )
+            
+            if tag_id:
+                self.add_tag_to_news(user_id, news_id, tag_id)
 
-        self.cursor.execute(
-            """INSERT INTO news (title, content, status, tag, source, type_news)
-               VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
-            (title, content, status, tag_id, source_id, not is_organization)
-        )
-        news_id = self.cursor.fetchone()['id']
-        
-        if tag_id:
-            self.add_tag_to_news(user_id, news_id, tag_id)
-
-        return news_id
+            return news_id
+        except psycopg2.Error:
+            return None
 
     def get_published_news(self, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> List[Dict]:
-        """Получение опубликованных новостей с информацией об источниках и тегах
+        """Получение опубликованных новостей (которых нет в offers)
         :return: список словарей с данными новостей, включая название источника, ссылку и теги"""
-        # Основной запрос для получения новостей
         query = """
             SELECT 
                 n.id,
                 n.type_news,
                 n.title,
                 n.content,
-                n.status,
                 n.source,
                 n.date,
                 s.name as source_name, 
@@ -251,7 +253,10 @@ class NewsDB:
             LEFT JOIN sources s ON n.source = s.id
             LEFT JOIN tags_news tn ON n.id = tn.newsid
             LEFT JOIN tags t ON tn.tagid = t.id
-            WHERE n.status = TRUE
+            WHERE NOT EXISTS (
+                SELECT 1 FROM offers o 
+                WHERE o.link = 'news_moderation:' || n.id::text
+            )
             GROUP BY n.id, s.name, s.link
         """
         params = []
@@ -269,32 +274,36 @@ class NewsDB:
 
     def get_news_for_moderation(self, admin_id: int) -> List[Dict]:
         """Получение новостей для модерации (админом)
-           :return: список словарей с новостями для модерации или пустой список если пользователь не админ"""
+        :return: список словарей с новостями для модерации или пустой список если пользователь не админ"""
         if not self._check_admin(admin_id):
             return []
 
-        self.cursor.execute("SELECT * FROM news WHERE status = FALSE")
+        self.cursor.execute("""
+            SELECT n.* 
+            FROM news n
+            JOIN offers o ON o.link = 'news_moderation:' || n.id::text
+        """)
         return [dict(row) for row in self.cursor.fetchall()]
 
     def approve_news(self, admin_id: int, news_id: int) -> bool:
-        """Одобрение новости (админом)
-           :return: True если новость успешно одобрена, иначе False"""
+        """Одобрение новости (админом) - удаление из offers
+        :return: True если новость успешно одобрена, иначе False"""
         if not self._check_admin(admin_id):
             return False
 
         self.cursor.execute(
-            "UPDATE news SET status = TRUE WHERE id = %s",
-            (news_id,)
+            "DELETE FROM offers WHERE link = %s",
+            (f"news_moderation:{news_id}",)
         )
         return self.cursor.rowcount > 0
 
     def reject_news(self, admin_id: int, news_id: int) -> bool:
         """Отклонение новости (админом)
-           :return: True если новость успешно отклонена, иначе False"""
+        :return: True если новость успешно отклонена, иначе False"""
         if not self._check_admin(admin_id):
             return False
 
-        self.cursor.execute("DELETE FROM news WHERE id = %s AND status = FALSE", (news_id,))
+        self.cursor.execute("DELETE FROM news WHERE id = %s", (news_id,))
         return self.cursor.rowcount > 0
 
     # Методы для работы с тегами
@@ -329,6 +338,93 @@ class NewsDB:
             )
             return True
         except psycopg2.IntegrityError:
+            return False
+        
+    def get_offers_for_moderation(self):
+        """Получение всех предложений для модерации"""
+        try:
+            self.cursor.execute("""
+                SELECT 
+                    o.id,
+                    o.user_id,
+                    o.link,
+                    u.user_login
+                FROM offers o
+                JOIN users u ON o.user_id = u.id
+                ORDER BY o.id DESC
+            """)
+            return [dict(row) for row in self.cursor.fetchall()]
+        except Exception as e:
+            print(f"Ошибка при получении предложений: {str(e)}")
+            return []
+
+    def process_offer(self, offer_id, action):
+        """Обработка предложения (одобрить/отклонить) с парсингом новости при одобрении"""
+        try:
+            # Получаем предложение
+            self.cursor.execute("""
+                SELECT * FROM offers WHERE id = %s
+            """, (offer_id,))
+            offer = self.cursor.fetchone()
+            
+            if not offer:
+                return False
+                
+            result = None
+            
+            if action == 'approve':
+                # Логика одобрения
+                if offer['link'].startswith('source_suggestion:'):
+                    # Исправляем разделение строки, чтобы получить полный URL
+                    source_url = offer['link'].split('source_suggestion:')[1]
+                    
+                    # Создаем объект News и парсим новость
+                    news = News(
+                        news_type="news",
+                        author="Предложенный источник",
+                        date=None,  # Можно добавить текущую дату: datetime.now().strftime("%Y-%m-%d")
+                        title="",   # Можно попытаться извлечь из страницы
+                        source=source_url
+                    )
+                    
+                    try:
+                        news.parse_news_item_science_rf()
+                        news.clean_html()
+                        
+                        # Формируем словарь с данными новости
+                        result = {
+                            'news_type': news.news_type,
+                            'author': news.author,
+                            'date': news.date,
+                            'title': news.title,
+                            'source': news.source,
+                            'text': news.text,
+                            'tags': news.tags
+                        }
+                        
+                        # Добавляем новый источник
+                        self.cursor.execute("""
+                            INSERT INTO sources (name, link) 
+                            VALUES (%s, %s)
+                            ON CONFLICT (link) DO NOTHING
+                        """, (f"Предложенный источник", source_url))
+                        
+                    except Exception as e:
+                        print(f"Ошибка при парсинге новости: {str(e)}")
+                        return False
+            
+            # Удаляем обработанное предложение
+            self.cursor.execute("""
+                DELETE FROM offers WHERE id = %s
+            """, (offer_id,))
+            
+            self.conn.commit()
+            print(result)
+            return result if action == 'approve' else True
+            
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Ошибка при обработке предложения: {str(e)}")
             return False
 
     # Методы для работы с источниками
@@ -373,21 +469,26 @@ class NewsDB:
 
     def add_news_to_folder(self, user_id: int, folder_id: int, news_id: int) -> bool:
         """Добавление новости в папку
-           :return: True если новость успешно добавлена, иначе False"""
-        self.cursor.execute(
-            """SELECT 1 FROM folders f
-               JOIN users u ON f.userLOG = u.user_login
-               WHERE f.id = %s AND u.id = %s""",
-            (folder_id, user_id)
-        )
-        if not self.cursor.fetchone():
-            return False
+        :return: True если новость успешно добавлена, иначе False"""
+        try:
+            # Проверяем, что папка принадлежит пользователю
+            self.cursor.execute(
+                """SELECT 1 FROM folders f
+                JOIN users u ON f.userLOG = u.user_login
+                WHERE f.id = %s AND u.id = %s""",
+                (folder_id, user_id)
+            )
+            if not self.cursor.fetchone():
+                return False
 
-        self.cursor.execute(
-            "UPDATE folders SET newsID = %s WHERE id = %s",
-            (news_id, folder_id)
-        )
-        return self.cursor.rowcount > 0
+            # Добавляем связь между новостью и папкой
+            self.cursor.execute(
+                "INSERT INTO folder_news (folder_id, news_id) VALUES (%s, %s)",
+                (folder_id, news_id)
+            )
+            return True
+        except psycopg2.IntegrityError:
+            return False
 
     def get_user_folders(self, user_id: int) -> List[Dict]:
         """Получение папок пользователя
@@ -415,6 +516,175 @@ class NewsDB:
             print(f"Error in suggest_news_source: {e}")
             self.conn.rollback()
             return False
+        
+    def get_news_in_folder(self, folder_id: int) -> List[Dict]:
+        """Получение новостей в папке"""
+        try:
+            self.cursor.execute("""
+                SELECT 
+                    n.id,
+                    n.type_news,
+                    n.title,
+                    n.content,
+                    n.source,
+                    n.date,
+                    s.name as source_name, 
+                    s.link as source_link,
+                    ARRAY_AGG(t.name) as tags
+                FROM news n
+                JOIN folder_news fn ON n.id = fn.news_id
+                LEFT JOIN sources s ON n.source = s.id
+                LEFT JOIN tags_news tn ON n.id = tn.newsid
+                LEFT JOIN tags t ON tn.tagid = t.id
+                WHERE fn.folder_id = %s
+                GROUP BY n.id, s.name, s.link
+            """, (folder_id,))
+            return [dict(row) for row in self.cursor.fetchall()]
+        except psycopg2.Error as e:
+            print(f"Error getting news in folder: {e}")
+            return []
+        
+    def get_news_count_in_folder(self, folder_id: int) -> int:
+        """Получение количества новостей в папке"""
+        try:
+            self.cursor.execute(
+                "SELECT COUNT(*) FROM folder_news WHERE folder_id = %s",
+                (folder_id,)
+            )
+            return self.cursor.fetchone()[0]
+        except psycopg2.Error as e:
+            print(f"Error getting news count in folder: {e}")
+            return 0
+        
+    def remove_news_from_folder(self, news_id: int, folder_id: int) -> bool:
+        """Удаление новости из папки
+        :return: True если удаление успешно, иначе False"""
+        try:
+            self.cursor.execute(
+                "DELETE FROM folder_news WHERE folder_id = %s AND news_id = %s",
+                (folder_id, news_id)
+            )
+            return self.cursor.rowcount > 0
+        except psycopg2.Error as e:
+            print(f"Error removing news from folder: {e}")
+            return False
+        
+    def is_news_in_folder(self, news_id: int, folder_id: int) -> bool:
+        """Проверяет, есть ли новость уже в папке"""
+        try:
+            self.cursor.execute(
+                "SELECT 1 FROM folder_news WHERE news_id = %s AND folder_id = %s",
+                (news_id, folder_id)
+            )
+            return self.cursor.fetchone() is not None
+        except psycopg2.Error as e:
+            print(f"Error checking news in folder: {e}")
+            return False
+        
+    def get_news_by_id(self, news_id: int) -> Optional[Dict]:
+        """Получение новости по ID
+        :return: словарь с данными новости или None если новость не найдена"""
+        try:
+            self.cursor.execute("""
+                SELECT 
+                    n.id,
+                    n.type_news,
+                    n.title,
+                    n.content,
+                    n.source,
+                    n.date,
+                    s.name as source_name, 
+                    s.link as source_link,
+                    ARRAY_AGG(t.name) as tags
+                FROM news n
+                LEFT JOIN sources s ON n.source = s.id
+                LEFT JOIN tags_news tn ON n.id = tn.newsid
+                LEFT JOIN tags t ON tn.tagid = t.id
+                WHERE n.id = %s
+                GROUP BY n.id, s.name, s.link
+            """, (news_id,))
+            
+            result = self.cursor.fetchone()
+            return dict(result) if result else None
+        except psycopg2.Error as e:
+            print(f"Error getting news by ID: {e}")
+            return None
+        
+    def subscribe_to_tag(self, user_id, tag_id):
+        """Подписать пользователя на тег"""
+        query = "INSERT INTO user_tag_subscriptions (user_id, tag_id) VALUES (%s, %s) ON CONFLICT DO NOTHING"
+        self.cursor.execute(query, (user_id, tag_id))
+        self.conn.commit()
+        return self.cursor.rowcount > 0
+
+    def unsubscribe_from_tag(self, user_id, tag_id):
+        """Отписать пользователя от тега"""
+        query = "DELETE FROM user_tag_subscriptions WHERE user_id = %s AND tag_id = %s"
+        self.cursor.execute(query, (user_id, tag_id))
+        self.conn.commit()
+        return self.cursor.rowcount > 0
+
+    def subscribe_to_source(self, user_id, source_id):
+        """Подписать пользователя на источник"""
+        query = "INSERT INTO user_source_subscriptions (user_id, source_id) VALUES (%s, %s) ON CONFLICT DO NOTHING"
+        self.cursor.execute(query, (user_id, source_id))
+        self.conn.commit()
+        return self.cursor.rowcount > 0
+
+    def unsubscribe_from_source(self, user_id, source_id):
+        """Отписать пользователя от источника"""
+        query = "DELETE FROM user_source_subscriptions WHERE user_id = %s AND source_id = %s"
+        self.cursor.execute(query, (user_id, source_id))
+        self.conn.commit()
+        return self.cursor.rowcount > 0
+
+    def get_popular_tags(self, limit=10):
+        """Получить популярные теги"""
+        query = """
+            SELECT t.id, t.name, COUNT(uts.user_id) as subscribers
+            FROM tags t
+            LEFT JOIN user_tag_subscriptions uts ON t.id = uts.tag_id
+            GROUP BY t.id
+            ORDER BY subscribers DESC
+            LIMIT %s
+        """
+        self.cursor.execute(query, (limit,))
+        return self.cursor.fetchall()
+
+    def get_popular_sources(self, limit=5):
+        """Получить популярные источники"""
+        query = """
+            SELECT s.id, s.name, s.link, COUNT(uss.user_id) as subscribers
+            FROM sources s
+            LEFT JOIN user_source_subscriptions uss ON s.id = uss.source_id
+            GROUP BY s.id
+            ORDER BY subscribers DESC
+            LIMIT %s
+        """
+        self.cursor.execute(query, (limit,))
+        return self.cursor.fetchall()
+
+    def get_user_tag_subscriptions(self, user_id):
+        """Получить подписки пользователя на теги"""
+        query = """
+            SELECT t.id, t.name 
+            FROM user_tag_subscriptions uts
+            JOIN tags t ON uts.tag_id = t.id
+            WHERE uts.user_id = %s
+        """
+        self.cursor.execute(query, (user_id,))
+        return self.cursor.fetchall()
+
+    def get_user_source_subscriptions(self, user_id):
+        """Получить подписки пользователя на источники"""
+        query = """
+            SELECT s.id, s.name, s.link 
+            FROM user_source_subscriptions uss
+            JOIN sources s ON uss.source_id = s.id
+            WHERE uss.user_id = %s
+        """
+        self.cursor.execute(query, (user_id,))
+        return self.cursor.fetchall()
 
 
     def update_user_telegram_id(self, user_id: int, telegram_id: int):

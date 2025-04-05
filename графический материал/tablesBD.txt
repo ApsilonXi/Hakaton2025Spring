@@ -56,12 +56,7 @@ CREATE TABLE folders (
 CREATE TABLE offers (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    link TEXT NOT NULL,
-    description TEXT,
-    status CHAR(10) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    processed_at TIMESTAMP,
-    processed_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+    link TEXT NOT NULL
 );
 
 -- Таблица подписок пользователей на теги
