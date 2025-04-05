@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Фактосфера: Регистрация</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="log_main">
+        <div class="log_container">
+            <div><a href="/"><img src="{{ url_for('static', filename='logo.svg') }}" alt="Логотип" class="log_logo"></a></div>
+            
+            <!-- Отображение flash-сообщений -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <div>
+                <form action="{{ url_for('register') }}" method="post" class="login_form" onsubmit="return validateForm()">
+                    <div>
+                        <label for="username"></label>
+                        <input type="text" id="username" name="username" placeholder="Логин" required 
+                               oninput="validateLogin(this)" maxlength="20" pattern="[a-zA-Z0-9]+"
+                               title="Только латинские буквы и цифры">
+                        <small class="form-text text-muted">Только латинские буквы и цифры (макс. 20 символов)</small>
+                    </div>
+                    
+                    <div>
+                        <label for="password"></label>
+                        <input type="password" id="password" name="password" placeholder="Пароль" required 
+                               oninput="validatePassword(this)" maxlength="20" pattern="[a-zA-Z0-9]+"
+                               title="Только латинские буквы и цифры">
+                        <small class="form-text text-muted">Только латинские буквы и цифры (макс. 20 символов)</small>
+                    </div>
+                 
+                    <button type="submit" class="reg_button">Зарегистрироваться</button>
+                </form>
+            </div>
+            
+            <div class="mt-3">
+                <p>Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Валидация логина (латинские буквы и цифры)
+        function validateLogin(input) {
+            input.value = input.value.replace(/[^a-zA-Z0-9]/g, '');
+        }
+        
+        // Валидация пароля (латинские буквы и цифры)
+        function validatePassword(input) {
+            input.value = input.value.replace(/[^a-zA-Z0-9]/g, '');
+        }
+        
+        // Общая проверка формы перед отправкой
+        function validateForm() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Проверка длины логина
+            if (username.length < 3) {
+                alert('Логин должен содержать минимум 3 символа');
+                return false;
+            }
+            
+            // Проверка длины пароля
+            if (password.length < 6) {
+                alert('Пароль должен содержать минимум 6 символов');
+                return false;
+            }
+            
+            return true;
+        }
+    </script>
+</body>
+</html>
