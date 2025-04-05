@@ -10,7 +10,7 @@ def restore_backup(backup_file:str, new_db_name:str, password:str):
     : password: пароль подключения к бд, такой же как указано в db_config.py
     """
     # Получаем параметры подключения из функции get_db_connection
-    conn = get_db_connection() # из db_config.py
+    conn = get_db_connection("postgres", "postgres", password, "localhost", "5432") # из db_config.py
     db_params = conn.get_dsn_parameters()
     conn.close()
 
@@ -30,7 +30,7 @@ def restore_backup(backup_file:str, new_db_name:str, password:str):
         conn = psycopg2.connect(
             dbname="postgres",  # Подключаемся к системной БД
             user=username,
-            password='password',
+            password=password,
             host=host,
             port=port
         )

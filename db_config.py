@@ -13,6 +13,7 @@ def get_db_connection(dbname:str, user:str, password:str, host:str, port:str):
     )
     return conn
 
+
 '''
 пример данных:
     conn = psycopg2.connect(
