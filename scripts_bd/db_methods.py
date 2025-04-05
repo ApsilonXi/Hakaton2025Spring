@@ -24,21 +24,7 @@ class NewsDB:
            :return: None"""
         self.cursor.close()
         self.conn.close()
-<<<<<<< HEAD
     
-=======
-
-    def _hash_password(self, password: str) -> str:
-        """Хеширование пароля"""
-        salt = uuid.uuid4().hex
-        return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
-
-    def _check_password(self, hashed_password: str, user_password: str) -> bool:
-        """Проверка пароля"""
-        password, salt = hashed_password.split(':')
-        return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
-
->>>>>>> ivan
     def _get_user_role(self, user_id: int) -> Optional[str]:
         """Получение роли пользователя
            :return: роль пользователя или None если пользователь не найден"""
@@ -92,7 +78,6 @@ class NewsDB:
             (login,)
         )
         user = self.cursor.fetchone()
-<<<<<<< HEAD
         
         return {
             'id': user['id'],
@@ -100,17 +85,6 @@ class NewsDB:
             'role': user['user_role'].strip()
         }
     
-=======
-
-        if user and self._check_password(user['user_password'], password):
-            return {
-                'id': user['id'],
-                'login': login,
-                'role': user['user_role']
-            }
-        return None
-
->>>>>>> ivan
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
         """Смена пароля пользователя с использованием SQL-функций
         :return: True если пароль успешно изменен, иначе False"""
@@ -121,13 +95,6 @@ class NewsDB:
             (old_password, user_id)
         )
         result = self.cursor.fetchone()
-<<<<<<< HEAD
-
-        if not result or not self._check_password(result['user_password'], old_password):
-            return False
-
-        new_hashed_password = self._hash_password(new_password)
-=======
         
         if not result or not result['auth_result']:
             return False
@@ -140,12 +107,51 @@ class NewsDB:
         new_hash = self.cursor.fetchone()['new_hash']
         
         # 3. Обновляем пароль в базе
->>>>>>> emiliya
         self.cursor.execute(
             "UPDATE users SET user_password = %s WHERE id = %s",
             (new_hash, user_id)
         )
         return True
+    
+    def update_user_telegram_id(self, user_id: int, telegram_id: int) -> bool:
+        """Обновление telegram_id пользователя с хешированием
+        :param user_id: ID пользователя
+        :param telegram_id: Telegram ID пользователя
+        :return: True если обновление успешно, иначе False"""
+        
+        # Проверяем существование пользователя
+        self.cursor.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
+        if not self.cursor.fetchone():
+            return False
+        
+        # Хешируем telegram_id с помощью SHA-256
+        hashed_telegram_id = hashlib.sha256(str(telegram_id).encode()).hexdigest()
+        
+        self.cursor.execute(
+            "UPDATE users SET telegram_id = %s WHERE id = %s",
+            (hashed_telegram_id, user_id)
+        )
+        return self.cursor.rowcount > 0
+    
+    def verify_telegram_id(self, user_id: int, telegram_id: int) -> bool:
+        """Проверка соответствия telegram_id пользователю
+        :param user_id: ID пользователя
+        :param telegram_id: Telegram ID для проверки
+        :return: True если telegram_id соответствует, иначе False"""
+        
+        self.cursor.execute(
+            "SELECT telegram_id FROM users WHERE id = %s",
+            (user_id,)
+        )
+        result = self.cursor.fetchone()
+        
+        if not result or not result['telegram_id']:
+            return False
+        
+        # Хешируем предоставленный telegram_id для сравнения
+        hashed_input = hashlib.sha256(str(telegram_id).encode()).hexdigest()
+        
+        return hashed_input == result['telegram_id']
 
     def upgrade_to_verified(self, admin_id: int, user_id: int) -> bool:
         """Повышение пользователя до верифицированного (админом)
@@ -191,40 +197,22 @@ class NewsDB:
         )
         self.cursor.execute(query, params)
         return self.cursor.rowcount > 0
-<<<<<<< HEAD
     
     def all_users(self):
         '''Получение всех пользователей БД
            :return: список всех пользователей с их ID, логинами и настройками уведомлений'''
         self.cursor.execute("""
             SELECT id, user_login, notification FROM users; 
-=======
-
-    def all_users(self):
-        '''Все пользователи сайта и статус подписки и телеграмм айди'''
-        self.cursor.execute("""
-            SELECT id, user_login, notification, telegram_id FROM users;
->>>>>>> ivan
             """)
         return self.cursor.fetchall()
 
     # Методы для работы с новостями
-<<<<<<< HEAD
     def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None, 
                 source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
         """Добавление новости:
            - Для верифицированных и админов: сразу публикуется (status=True)
            - Для обычных: на модерацию (status=False)
            :return: ID добавленной новости или None если добавление не удалось"""
-=======
-    def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None,
-                 source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
-        """
-        Добавление новости:
-        - Для верифицированных и админов: сразу публикуется (status=True)
-        - Для обычных: на модерацию (status=False)
-        """
->>>>>>> ivan
         role = self._get_user_role(user_id)
         if role is None:
             return None
@@ -237,12 +225,7 @@ class NewsDB:
             (title, content, status, tag_id, source_id, not is_organization)
         )
         news_id = self.cursor.fetchone()['id']
-<<<<<<< HEAD
         
-=======
-
-        # Если указан тег, создаем связь в tags_news
->>>>>>> ivan
         if tag_id:
             self.add_tag_to_news(user_id, news_id, tag_id)
 
@@ -282,55 +265,8 @@ class NewsDB:
             params.append(source_id)
 
         self.cursor.execute(query, params)
-<<<<<<< HEAD
         return [dict(row) for row in self.cursor.fetchall()]
 
-=======
-        news_items = []
-        
-        for row in self.cursor.fetchall():
-            item = dict(row)
-            # Очищаем теги от None и лишних пробелов
-            item['tags'] = [tag.strip() for tag in (item['tags'] or []) if tag]
-            news_items.append(item)
-        
-        return news_items
-    
-    def get_news_by_id(self, news_id: int) -> Optional[Dict]:
-        """Получение новости по ID с информацией о тегах и источнике
-        :param news_id: ID новости
-        :return: словарь с данными новости (включая список тегов) или None, если не найдена"""
-        # Получаем основную информацию о новости
-        news_query = """
-            SELECT 
-                n.*, 
-                s.name as source_name, 
-                s.link as source_link
-            FROM news n
-            LEFT JOIN sources s ON n.source = s.id
-            WHERE n.id = %s
-        """
-        self.cursor.execute(news_query, (news_id,))
-        news_item = self.cursor.fetchone()
-        
-        if not news_item:
-            return None
-        
-        news_item = dict(news_item)
-        
-        # Получаем все теги для этой новости
-        tags_query = """
-            SELECT t.name 
-            FROM tags_news tn
-            JOIN tags t ON tn.tagid = t.id
-            WHERE tn.newsid = %s
-        """
-        self.cursor.execute(tags_query, (news_id,))
-        news_item['tags'] = [row['name'].strip() for row in self.cursor.fetchall()]
-        
-        return news_item
-    
->>>>>>> bella
     def get_news_for_moderation(self, admin_id: int) -> List[Dict]:
         """Получение новостей для модерации (админом)
            :return: список словарей с новостями для модерации или пустой список если пользователь не админ"""
