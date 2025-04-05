@@ -23,7 +23,7 @@ class NewsDB:
         self.conn.close()
     
     def _hash_password(self, password: str) -> str:
-        """Хеширование пароля с солью"""
+        """Хеширование пароля"""
         salt = uuid.uuid4().hex
         return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
     
@@ -136,6 +136,41 @@ class NewsDB:
         )
         self.cursor.execute(query, params)
         return self.cursor.rowcount > 0
+    
+    def update_user_attributes(self, user_id: int, updates: Dict[str, Union[str, int]]) -> bool:
+        """
+        Обновление атрибутов пользователя с ограничением на изменение определенных полей.
+        Допустимые поля для обновления: 'user_login', 'notification'
+        Недопустимые поля: 'id', 'user_password', 'user_role', 'tag_subscription', 'sources_subsc'
+        
+        Args:
+            user_id: ID пользователя
+            updates: Словарь с обновляемыми полями и их значениями
+            
+        Returns:
+            bool: True если обновление прошло успешно, False в противном случае
+        """
+        # Список разрешенных для изменения полей
+        allowed_fields = {'user_login', 'notification'}
+        
+        # Фильтруем поля, оставляем только разрешенные
+        valid_updates = {k: v for k, v in updates.items() if k in allowed_fields}
+        
+        if not valid_updates:
+            return False
+        
+        try:
+            # Формируем SQL запрос
+            set_clause = ", ".join([f"{field} = %s" for field in valid_updates.keys()])
+            query = f"UPDATE users SET {set_clause} WHERE id = %s"
+            
+            # Параметры для запроса: значения полей + user_id
+            params = list(valid_updates.values()) + [user_id]
+            
+            self.cursor.execute(query, params)
+            return self.cursor.rowcount > 0
+        except psycopg2.Error:
+            return False
     
     # Методы для работы с новостями
     def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None, 
