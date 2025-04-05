@@ -18,26 +18,34 @@ CONFIG = {
 }
 
 # "База данных" пользователей
-user_db = {}
+
 db = NewsDB()
+user_db = db.all_users()
+registered_users = [item[3] for item in user_db]
 
 
 class UserState:
     def __init__(self):
         self.token = None
         self.is_authenticated = False
-        self.fast_subscription = False
-        self.daily_digest = False
+        self.subscription = 0
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start"""
     user_id = update.effective_user.id
+    user_state = UserState()
 
-    if user_id not in user_db:
-        user_db[user_id] = UserState()
+    # Проверяем, есть ли пользователь в базе данных
+    for user in user_db:
+        if user[3] == user_id:  # Проверяем telegram id (4-й элемент в списке)
+            user_state.token = user[1].strip()  # Логин (удаляем лишние пробелы)
+            user_state.is_authenticated = True
+            user_state.subscription = int(user[2].strip())
+            break
 
-    user_state = user_db[user_id]
+    # Сохраняем состояние пользователя в контексте
+    context.user_data['user_state'] = user_state
 
     if user_state.is_authenticated:
         await show_authenticated_menu(update, user_state)
@@ -65,7 +73,7 @@ async def show_unauthenticated_menu(update: Update) -> None:
 
 async def show_authenticated_menu(update: Update, user_state: UserState) -> None:
     """Меню для авторизованных пользователей"""
-    if user_state.fast_subscription or user_state.daily_digest:
+    if user_state.subscription != 0:
         keyboard = [
             [
                 InlineKeyboardButton("❌ Отменить подписку", callback_data='unsubscribe'),
@@ -98,7 +106,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
 
     user_id = update.effective_user.id
-    user_state = user_db.get(user_id, UserState())
+    user_state = context.user_data['user_state']
 
     if query.data == 'link_account':
         await query.edit_message_text(
@@ -108,24 +116,24 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     elif query.data == 'get_news':
         await get_latest_news(update, context, user_state)
     elif query.data == 'fast_sub':
-        user_state.fast_subscription = True
+        user_state.subscription = 1
         user_db[user_id] = user_state
         await query.edit_message_text(text="✅ Вы подписались на мгновенные уведомления о новостях!")
         await show_authenticated_menu_from_query(update, user_state)
     elif query.data == 'daily_digest':
-        user_state.daily_digest = True
+        user_state.subscription = 2
         user_db[user_id] = user_state
         await query.edit_message_text(text="✅ Вы подписались на ежедневную сводку новостей!")
         await show_authenticated_menu_from_query(update, user_state)
     elif query.data == 'unsubscribe':
-        user_state.fast_subscription = False
-        user_state.daily_digest = False
+        user_state.subscription = 0
         user_db[user_id] = user_state
         await query.edit_message_text(text="❌ Вы отменили все подписки на новости.")
         await show_authenticated_menu_from_query(update, user_state)
     elif query.data == 'back':
         await show_unauthenticated_menu_from_query(update)
     elif query.data == 'menu':
+        print(user_state.is_authenticated)
         if user_state.is_authenticated:
             await show_authenticated_menu_from_query(update, user_state)
         else:
@@ -136,7 +144,7 @@ async def show_authenticated_menu_from_query(update: Update, user_state: UserSta
     """Показывает меню для авторизованных пользователей из обработчика кнопок"""
     query = update.callback_query
 
-    if user_state.fast_subscription or user_state.daily_digest:
+    if user_state.subscription != 0:
         keyboard = [
             [
                 InlineKeyboardButton("❌ Отменить подписку", callback_data='unsubscribe'),
@@ -183,32 +191,53 @@ async def show_unauthenticated_menu_from_query(update: Update) -> None:
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик текстовых сообщений"""
+    """Обработчик текстовых сообщений (привязка аккаунта по ключу)"""
     user_id = update.effective_user.id
-    user_state = user_db.get(user_id, UserState())
+    user_state = context.user_data['user_state']
+    print(user_state)
 
+    # Если бот ожидает токен
     if context.user_data.get('expecting_token', False):
-        token = update.message.text
-        if await validate_token(token):
-            user_state.token = token
+        input_token = update.message.text.strip()  # Удаляем пробелы
+
+        # Ищем пользователя в базе по ключу (формат: user_id + user_login)
+        user_found = None
+        for user in user_db:
+            expected_token = f"{user[0]}{user[1].strip()}"  # user_id + login
+            print(expected_token)
+            print(input_token)
+            if input_token == expected_token:
+                user_found = user
+                break
+
+        # Если ключ верный
+        if user_found:
+            # Обновляем telegram_id в базе данных
+            db.update_user_telegram_id(user_found[0], user_id)
+
+            # Обновляем состояние пользователя
+            user_state.token = user_id
             user_state.is_authenticated = True
-            user_db[user_id] = user_state
-            await update.message.reply_text("✅ Ваш аккаунт успешно связан!")
-            await show_authenticated_menu(update, user_state)
-        else:
-            # Создаем клавиатуру с кнопкой "Меню"
-            keyboard = [
-                [InlineKeyboardButton("📋 Меню", callback_data='menu')]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
+            context.user_data['user_state'] = user_state  # Сохраняем изменения
 
             await update.message.reply_text(
-                "❌ Неверный токен. Пожалуйста, попробуйте еще раз.",
-                reply_markup=reply_markup
+                "✅ Аккаунт успешно привязан!",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📋 Меню", callback_data="menu")]])
             )
-        context.user_data['expecting_token'] = False
+            await show_authenticated_menu(update, user_state)
+        else:
+            await update.message.reply_text(
+                "❌ Неверный ключ. Проверьте правильность ввода или обратитесь в поддержку.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📋 Меню", callback_data="menu")]])
+            )
+
+        context.user_data['expecting_token'] = False  # Сбрасываем ожидание токена
+
     else:
-        await update.message.reply_text("Пожалуйста, используйте меню для взаимодействия с ботом.")
+        await update.message.reply_text(
+            "Пожалуйста, используйте кнопки меню для навигации.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📋 Меню", callback_data="menu")]])
+        )
 
 
 async def validate_token(token: str) -> bool:
