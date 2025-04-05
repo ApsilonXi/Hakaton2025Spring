@@ -1,5 +1,6 @@
 from db_config import *
 
+'''ручной ввод: "C:\Program Files\PostgreSQL\17\bin\pg_dump" -U postgres -h localhost -p 5432 -d news_bd -F c -f "D:\GitGub\Hakaton2025Spring\backup\backup.sql"'''
 # фукнция чтобы полностью выгружать базу данных, со всеми триггерами, процедурами, таблицами, данными из таблицы в sql файл
 def create_backup(password:str):
     """
@@ -7,7 +8,7 @@ def create_backup(password:str):
     """
 
     # Получаем параметры подключения из функции get_db_connection (файл db_config.py)
-    conn = get_db_connection('news_bd', 'postgres', '12345', 'localhost', '5432')
+    conn = get_db_connection()
     db_params = conn.get_dsn_parameters()
     conn.close()
 
@@ -23,7 +24,7 @@ def create_backup(password:str):
     host = db_params['host']
     port = db_params['port']
     database = db_params['dbname']
-    backup_file = os.path.join(f"backup.sql")
+    backup_file = os.path.join(f"{database}_backup_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.sql")
 
     # Команда для выполнения резервного копирования
     command = [
@@ -42,4 +43,7 @@ def create_backup(password:str):
     except subprocess.CalledProcessError as e:
         print("Ошибка", f"Ошибка при создании бекапа: {e}")
 
-create_backup("12345")
+"""
+    ПРИМЕР ВЫЗОВА:
+    create_backup("password")
+"""
