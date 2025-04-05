@@ -1,0 +1,195 @@
+:root {
+    --textfont: "Merriweather", serif;
+}
+
+body {
+    font-family: "Roboto Condensed", sans-serif;
+    min-height: 100vh;
+    padding: 0;
+    margin: 0;
+}
+
+a {
+    text-decoration: none;
+}
+
+a:visited {
+    color: black;
+}
+
+.title, .a-title, .s-title, .date, .a-date, .s-date, .s-news-text, .a-news-text, .news-text, .news-author {
+    font-family: var(--textfont);
+}
+
+.nav-container {
+    background-color: #f8f9fa;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+}
+
+.nav-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.nav-container button {
+    background-color: transparent;
+    border: none;
+    font-weight: bolder;
+    text-align: left;
+    width: 100%;
+    padding: 0.5rem 1rem;
+}
+
+.nav-container button:hover {
+    background-color: #e9ecef;
+}
+
+.sort-buttons button {
+    background-color: whitesmoke;
+    border: none;
+    font-weight: bolder;
+    border-radius: 3px;
+    padding: 0.3rem 0.8rem;
+}
+
+.sort-buttons button:hover {
+    color: white;
+    background-color: #0d6efd;
+}
+
+.search input {
+    width: 100%;
+    border-radius: 5px;
+    height: 2.5rem;
+    border: 1px solid #dee2e6;
+    padding: 0 1rem;
+}
+
+.search input:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.card {
+    background-color: whitesmoke;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+.card button {
+    border-radius: 20px;
+    border: none;
+    padding: 0.5rem 1rem;
+    background-color: transparent;
+    margin: 0 0.2rem;
+}
+
+.card button:hover {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.card-lower {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.admin-card, .saved-card {
+    background-color: whitesmoke;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.admin-card:hover, .saved-card:hover {
+    background-color: #e9ecef;
+}
+
+/* Десктопная версия - вертикальный скролл */
+.admin-cards, .saved-cards {
+    max-height: calc(3 * (150px + 1rem)); /* 3 карточки + отступы */
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.admin-cards::-webkit-scrollbar, .saved-cards::-webkit-scrollbar {
+    width: 6px;
+}
+
+.admin-cards::-webkit-scrollbar-thumb, .saved-cards::-webkit-scrollbar-thumb {
+    background-color: #adb5bd;
+    border-radius: 3px;
+}
+
+/* Мобильная версия - горизонтальный скролл с одной карточкой */
+@media (max-width: 992px) {
+    .nav-container {
+        height: auto;
+        position: static;
+    }
+    
+    .side-container {
+        order: -1;
+    }
+    
+    .admin-cards, .saved-cards {
+        display: flex;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        gap: 1rem;
+        max-height: none;
+        padding-bottom: 1rem;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Скрываем стандартный скроллбар */
+        -ms-overflow-style: none; /* Для IE/Edge */
+    }
+    
+    .admin-cards::-webkit-scrollbar, 
+    .saved-cards::-webkit-scrollbar {
+        display: none; /* Скрываем стандартный скроллбар в WebKit */
+    }
+    
+    .admin-card, .saved-card {
+        width: 100%;
+        min-width: 100%;
+        scroll-snap-align: start;
+        margin-bottom: 0;
+        flex: 0 0 auto;
+    }
+    
+    /* Убираем лишние отступы между карточками */
+    .admin-cards > a, .saved-cards > a {
+        width: 100%;
+        min-width: 100%;
+    }
+
+    /* Стили для индикатора прокрутки с точечками */
+    .scroll-indicator {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 0;
+    }
+    
+    .scroll-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #ccc;
+        transition: all 0.3s ease;
+    }
+    
+    .scroll-dot.active {
+        background-color: #0d6efd;
+        transform: scale(1.2);
+    }
+}
