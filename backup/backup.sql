@@ -68,7 +68,8 @@ CREATE TABLE public.news (
     content text NOT NULL,
     status boolean DEFAULT false,
     tag integer,
-    source integer
+    source integer,
+    date timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -276,7 +277,8 @@ CREATE TABLE public.users (
     user_role character(15) NOT NULL,
     notification character(20) DEFAULT '0'::bpchar,
     tag_subscription integer,
-    sources_subsc integer
+    sources_subsc integer,
+    telegram_id bigint DEFAULT 1000000000 NOT NULL
 );
 
 
@@ -370,12 +372,12 @@ COPY public.folders (id, userlog, name, newsid) FROM stdin;
 -- Data for Name: news; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.news (id, type_news, title, content, status, tag, source) FROM stdin;
-1	t	Новые технологии в IT	Содержание статьи о новых технологиях...	t	2	2
-2	t	Выборы 2023	Последние новости о выборах...	t	1	1
-3	f	Корпоративные новости	Внутренние новости нашей организации...	t	3	4
-4	t	Спортивные достижения	Новые рекорды в спорте...	f	4	3
-5	t	Советы по здоровью	Как сохранить здоровье...	f	5	1
+COPY public.news (id, type_news, title, content, status, tag, source, date) FROM stdin;
+1	t	Новые технологии в IT	Содержание статьи о новых технологиях...	t	2	2	2025-04-05 15:14:55.008649
+2	t	Выборы 2023	Последние новости о выборах...	t	1	1	2025-04-05 15:14:55.008649
+3	f	Корпоративные новости	Внутренние новости нашей организации...	t	3	4	2025-04-05 15:14:55.008649
+4	t	Спортивные достижения	Новые рекорды в спорте...	f	4	3	2025-04-05 15:14:55.008649
+5	t	Советы по здоровью	Как сохранить здоровье...	f	5	1	2025-04-05 15:14:55.008649
 \.
 
 
@@ -458,11 +460,11 @@ COPY public.user_tag_subscriptions (user_id, tag_id) FROM stdin;
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.users (id, user_login, user_password, user_role, notification, tag_subscription, sources_subsc) FROM stdin;
-1	admin               	admin123                                                                                            	admin          	1                   	\N	\N
-4	moderator           	mod123                                                                                              	verified       	1                   	\N	\N
-3	regular_user        	user123                                                                                             	user           	0                   	2	1
-2	verified_user       	user123                                                                                             	verified       	1                   	1	2
+COPY public.users (id, user_login, user_password, user_role, notification, tag_subscription, sources_subsc, telegram_id) FROM stdin;
+1	admin               	admin123                                                                                            	admin          	1                   	\N	\N	1000000000
+4	moderator           	mod123                                                                                              	verified       	1                   	\N	\N	1000000000
+3	regular_user        	user123                                                                                             	user           	0                   	2	1	1000000000
+2	verified_user       	user123                                                                                             	verified       	1                   	1	2	1000000000
 \.
 
 

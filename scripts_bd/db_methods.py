@@ -136,19 +136,11 @@ class NewsDB:
         )
         self.cursor.execute(query, params)
         return self.cursor.rowcount > 0
-<<<<<<< HEAD
-
-    def all_users(self):
-        '''Все пользователи сайта'''
-        self.cursor.execute("""
-            SELECT id, user_login FROM users;
-=======
     
     def all_users(self):
         '''Получение всех пользователей БД'''
         self.cursor.execute("""
             SELECT id, user_login FROM users; 
->>>>>>> emiliya
             """)
         return self.cursor.fetchall()
     
