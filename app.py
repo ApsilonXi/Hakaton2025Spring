@@ -96,6 +96,126 @@ def login():
     
     return render_template("login.html")
 
+@app.route("/my_profile", methods=['GET', 'POST'])
+def my_profile():
+    # Проверка авторизации и что пользователь не админ
+    if 'user' not in session:
+        flash('Для доступа к этой странице необходимо авторизоваться', 'error')
+        return redirect(url_for('login'))
+    
+    if session['user']['role'] == 'admin':
+        flash('Администраторы не имеют доступа к этой странице', 'error')
+        return redirect(url_for('index'))
+    
+    user_id = session['user']['id']
+    message = None
+    
+    # Обработка смены пароля
+    if request.method == 'POST':
+        old_password = request.form.get('old_password')
+        new_password = request.form.get('new_password')
+        
+        if not old_password or not new_password:
+            flash('Все поля должны быть заполнены', 'error')
+        else:
+            success = DB.change_password(user_id, old_password, new_password)
+            if success:
+                flash('Пароль успешно изменен', 'success')
+            else:
+                flash('Неверный старый пароль', 'error')
+    
+    # Генерация токена (id + user_login)
+    token = f"{session['user']['id']}{session['user']['login']}"
+    
+    return render_template("my_profile.html", 
+                         user_info=session['user'],
+                         token=token)
+
+@app.route("/suggest_news", methods=['GET', 'POST'])
+def suggest_news():
+    # Проверка авторизации и что пользователь не админ
+    if 'user' not in session:
+        flash('Для доступа к этой странице необходимо авторизоваться', 'error')
+        return redirect(url_for('login'))
+    
+    if session['user']['role'] == 'admin':
+        flash('Администраторы не имеют доступа к этой странице', 'error')
+        return redirect(url_for('index'))
+    
+    user_id = session['user']['id']
+    
+    if request.method == 'POST':
+        link = request.form.get('link')
+        
+        if not link:
+            flash('Поле ссылки не может быть пустым', 'error')
+        else:
+            success = DB.suggest_news_source(user_id, link)
+            if success:
+                flash('Ссылка успешно отправлена на рассмотрение', 'success')
+                return redirect(url_for('index'))
+            else:
+                flash('Произошла ошибка при отправке предложения', 'error')
+    
+    return render_template("suggest_news.html", 
+                         user_info=session['user'])
+
+
+@app.route("/create_news", methods=['GET', 'POST'])
+def create_news():
+    # Проверка авторизации и что пользователь админ или верифицированный
+    if 'user' not in session:
+        flash('Для доступа к этой странице необходимо авторизоваться', 'error')
+        return redirect(url_for('login'))
+    
+    if session['user']['role'] not in ('admin', 'verified'):
+        flash('Только админы и верифицированные пользователи могут создавать новости', 'error')
+        return redirect(url_for('index'))
+    
+    user_id = session['user']['id']
+    
+    # Получаем список доступных тегов из базы данных
+    tags = DB.get_all_tags()
+    
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        source_link = request.form.get('source_link')
+        source_name = request.form.get('source_name')
+        tag_id = request.form.get('tag_id')
+        is_organization = request.form.get('is_organization') == 'on'
+        
+        if not title or not content:
+            flash('Заголовок и содержание новости обязательны для заполнения', 'error')
+        else:
+            # Получаем или создаем источник по ссылке
+            source_id = None
+            
+            if source_link:
+                source_id = DB.get_or_create_source(source_link)
+            
+            # Преобразуем tag_id в int, если он есть
+            tag_id = int(tag_id) if tag_id else None
+            
+            news_id = DB.add_news(
+                user_id=user_id,
+                title=title,
+                content=content,
+                tag_id=tag_id,
+                source_id=source_id,
+                is_organization=is_organization
+            )
+            
+            if news_id:
+                flash('Новость успешно добавлена!', 'success')
+                return redirect(url_for('news_page', news_id=news_id))
+            else:
+                flash('Произошла ошибка при добавлении новости', 'error')
+    
+    return render_template("create_news.html", 
+                         user_info=session['user'],
+                         tags=tags)
+
 @app.route("/my_folders")
 def my_folders():
     if 'user' not in session:

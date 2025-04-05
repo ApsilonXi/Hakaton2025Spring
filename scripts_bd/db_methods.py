@@ -24,9 +24,6 @@ class NewsDB:
            :return: None"""
         self.cursor.close()
         self.conn.close()
-<<<<<<< HEAD
-    
-=======
 
     def _hash_password(self, password: str) -> str:
         """Хеширование пароля"""
@@ -38,7 +35,6 @@ class NewsDB:
         password, salt = hashed_password.split(':')
         return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
 
->>>>>>> ivan
     def _get_user_role(self, user_id: int) -> Optional[str]:
         """Получение роли пользователя
            :return: роль пользователя или None если пользователь не найден"""
@@ -92,25 +88,13 @@ class NewsDB:
             (login,)
         )
         user = self.cursor.fetchone()
-<<<<<<< HEAD
         
         return {
             'id': user['id'],
             'login': user['user_login'].strip(),
             'role': user['user_role'].strip()
         }
-    
-=======
 
-        if user and self._check_password(user['user_password'], password):
-            return {
-                'id': user['id'],
-                'login': login,
-                'role': user['user_role']
-            }
-        return None
-
->>>>>>> ivan
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
         """Смена пароля пользователя с использованием SQL-функций
         :return: True если пароль успешно изменен, иначе False"""
@@ -121,13 +105,6 @@ class NewsDB:
             (old_password, user_id)
         )
         result = self.cursor.fetchone()
-<<<<<<< HEAD
-
-        if not result or not self._check_password(result['user_password'], old_password):
-            return False
-
-        new_hashed_password = self._hash_password(new_password)
-=======
         
         if not result or not result['auth_result']:
             return False
@@ -140,7 +117,6 @@ class NewsDB:
         new_hash = self.cursor.fetchone()['new_hash']
         
         # 3. Обновляем пароль в базе
->>>>>>> emiliya
         self.cursor.execute(
             "UPDATE users SET user_password = %s WHERE id = %s",
             (new_hash, user_id)
@@ -191,62 +167,64 @@ class NewsDB:
         )
         self.cursor.execute(query, params)
         return self.cursor.rowcount > 0
-<<<<<<< HEAD
-    
-    def all_users(self):
-        '''Получение всех пользователей БД
-           :return: список всех пользователей с их ID, логинами и настройками уведомлений'''
-        self.cursor.execute("""
-            SELECT id, user_login, notification FROM users; 
-=======
 
     def all_users(self):
         '''Все пользователи сайта и статус подписки и телеграмм айди'''
         self.cursor.execute("""
             SELECT id, user_login, notification, telegram_id FROM users;
->>>>>>> ivan
             """)
         return self.cursor.fetchall()
 
     # Методы для работы с новостями
-<<<<<<< HEAD
-    def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None, 
-                source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
-        """Добавление новости:
-           - Для верифицированных и админов: сразу публикуется (status=True)
-           - Для обычных: на модерацию (status=False)
-           :return: ID добавленной новости или None если добавление не удалось"""
-=======
+
+    def get_all_tags(self):
+        """Получение списка всех доступных тегов"""
+        self.cursor.execute("SELECT id, name FROM tags ORDER BY name")
+        return self.cursor.fetchall()
+
+    def get_or_create_source(self, link: str, name: str = None) -> int:
+        """Получение или создание источника по ссылке"""
+        self.cursor.execute("SELECT id FROM sources WHERE link = %s", (link,))
+        result = self.cursor.fetchone()
+        
+        if result:
+            return result['id']
+        
+        # Если имя не указано, используем домен из ссылки
+        if not name:
+            from urllib.parse import urlparse
+            name = urlparse(link).netloc or "Неизвестный источник"
+        
+        self.cursor.execute(
+            "INSERT INTO sources (name, link) VALUES (%s, %s) RETURNING id",
+            (name, link)
+        )
+        self.conn.commit()
+        return self.cursor.fetchone()['id']
     def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None,
-                 source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
+                source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
         """
         Добавление новости:
-        - Для верифицированных и админов: сразу публикуется (status=True)
-        - Для обычных: на модерацию (status=False)
+        - Всегда публикуется (status=True)
         """
->>>>>>> ivan
-        role = self._get_user_role(user_id)
-        if role is None:
+        try:
+            self.cursor.execute(
+                """INSERT INTO news (title, content, status, tag, source, type_news)
+                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
+                (title, content, True, tag_id, source_id, not is_organization)  # Всегда status=True
+            )
+            news_id = self.cursor.fetchone()['id']
+
+            # Если указан тег, создаем связь в tags_news
+            if tag_id:
+                self.add_tag_to_news(user_id, news_id, tag_id)
+                
+            self.conn.commit()
+            return news_id
+        except Exception as e:
+            print(f"Error adding news: {e}")
+            self.conn.rollback()
             return None
-
-        status = role in ('verified', 'admin')
-
-        self.cursor.execute(
-            """INSERT INTO news (title, content, status, tag, source, type_news)
-               VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
-            (title, content, status, tag_id, source_id, not is_organization)
-        )
-        news_id = self.cursor.fetchone()['id']
-<<<<<<< HEAD
-        
-=======
-
-        # Если указан тег, создаем связь в tags_news
->>>>>>> ivan
-        if tag_id:
-            self.add_tag_to_news(user_id, news_id, tag_id)
-
-        return news_id
 
     def get_published_news(self, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> List[Dict]:
         """Получение опубликованных новостей с информацией об источниках и тегах
@@ -282,10 +260,6 @@ class NewsDB:
             params.append(source_id)
 
         self.cursor.execute(query, params)
-<<<<<<< HEAD
-        return [dict(row) for row in self.cursor.fetchall()]
-
-=======
         news_items = []
         
         for row in self.cursor.fetchall():
@@ -330,7 +304,6 @@ class NewsDB:
         
         return news_item
     
->>>>>>> bella
     def get_news_for_moderation(self, admin_id: int) -> List[Dict]:
         """Получение новостей для модерации (админом)
            :return: список словарей с новостями для модерации или пустой список если пользователь не админ"""
@@ -467,12 +440,19 @@ class NewsDB:
 
     def suggest_news_source(self, user_id: int, link: str) -> bool:
         """Отправка предложения нового источника
-           :return: True если предложение успешно сохранено, иначе False"""
-        self.cursor.execute(
-            "UPDATE users SET notification = %s WHERE id = %s",
-            (f"source_suggestion:{link}", user_id)
-        )
-        return self.cursor.rowcount > 0
+        :return: True если предложение успешно сохранено, иначе False"""
+        try:
+            self.cursor.execute(
+                "INSERT INTO offers (user_id, link) VALUES (%s, %s)",
+                (user_id, f"source_suggestion:{link}")
+            )
+            self.conn.commit()
+            return self.cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error in suggest_news_source: {e}")
+            self.conn.rollback()
+            return False
+
 
     def update_user_telegram_id(self, user_id: int, telegram_id: int):
         self.cursor.execute(

@@ -173,13 +173,7 @@ ALTER SEQUENCE public.news_id_seq OWNED BY public.news.id;
 CREATE TABLE public.offers (
     id integer NOT NULL,
     user_id integer NOT NULL,
-    link text NOT NULL,
-    description text,
-    status character(10) DEFAULT 'pending'::bpchar,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    processed_at timestamp without time zone,
-    processed_by integer,
-    CONSTRAINT offers_status_check CHECK ((status = ANY (ARRAY['pending'::bpchar, 'approved'::bpchar, 'rejected'::bpchar])))
+    link text NOT NULL
 );
 
 
@@ -347,7 +341,7 @@ CREATE TABLE public.users (
     notification character(20) DEFAULT '0'::bpchar,
     tag_subscription integer,
     sources_subsc integer,
-    telegram_id bigint DEFAULT 1000000000 NOT NULL
+    telegram_id character(100) DEFAULT 1000000000 NOT NULL
 );
 
 
@@ -454,7 +448,7 @@ COPY public.news (id, type_news, title, content, status, tag, source, date) FROM
 -- Data for Name: offers; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.offers (id, user_id, link, description, status, created_at, processed_at, processed_by) FROM stdin;
+COPY public.offers (id, user_id, link) FROM stdin;
 \.
 
 
@@ -530,11 +524,11 @@ COPY public.user_tag_subscriptions (user_id, tag_id) FROM stdin;
 --
 
 COPY public.users (id, user_login, user_password, user_role, notification, tag_subscription, sources_subsc, telegram_id) FROM stdin;
-1	admin               	admin123                                                                                            	admin          	1                   	\N	\N	1000000000
-4	moderator           	mod123                                                                                              	verified       	1                   	\N	\N	1000000000
-3	regular_user        	user123                                                                                             	user           	0                   	2	1	1000000000
-2	verified_user       	user123                                                                                             	verified       	1                   	1	2	1000000000
-6	test_user           	$2a$06$S4gQYZG06fDNiyDjFdBpD.QVJKISp/s8bQ40t9FoR7R.E6BbvpGnW                                        	user           	1                   	\N	\N	1000000000
+1	admin               	admin123                                                                                            	admin          	1                   	\N	\N	1000000000                                                                                          
+4	moderator           	mod123                                                                                              	verified       	1                   	\N	\N	1000000000                                                                                          
+3	regular_user        	user123                                                                                             	user           	0                   	2	1	1000000000                                                                                          
+2	verified_user       	user123                                                                                             	verified       	1                   	1	2	1000000000                                                                                          
+6	test_user           	$2a$06$S4gQYZG06fDNiyDjFdBpD.QVJKISp/s8bQ40t9FoR7R.E6BbvpGnW                                        	user           	1                   	\N	\N	1000000000                                                                                          
 \.
 
 
@@ -705,14 +699,6 @@ ALTER TABLE ONLY public.news
 
 ALTER TABLE ONLY public.news
     ADD CONSTRAINT news_tag_fkey FOREIGN KEY (tag) REFERENCES public.tags(id) ON DELETE SET NULL;
-
-
---
--- Name: offers offers_processed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.offers
-    ADD CONSTRAINT offers_processed_by_fkey FOREIGN KEY (processed_by) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --

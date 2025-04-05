@@ -70,4 +70,4 @@ def restore_backup(backup_file:str, new_db_name:str, password:str):
     ПРИМЕР ВЫЗОВА:
     restore_backup("drug_store_backup_2025-03-26_18-07-12.sql", "drug_store_new", "password")
 '''
-#restore_backup("backup\\backup.sql", "news_db", "password") #команда для ноута Беллы!!! у вас будет другой пароль
+restore_backup("backup\\backup.sql", "news_db", "password") #команда для ноута Беллы!!! у вас будет другой пароль
