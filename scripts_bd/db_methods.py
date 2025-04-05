@@ -80,8 +80,8 @@ class NewsDB:
         
         return {
             'id': user['id'],
-            'login': user['user_login'],
-            'role': user['user_role']
+            'login': user['user_login'].strip(),
+            'role': user['user_role'].strip()
         }
     
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
