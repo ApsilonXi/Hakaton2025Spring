@@ -7,7 +7,8 @@ import uuid
 
 class NewsDB:
     def __init__(self, dbname='news_db', user='postgres', password='12345', host='localhost'):
-        """Инициализация подключения к базе данных"""
+        """Инициализация подключения к базе данных
+           :return: None"""
         self.conn = psycopg2.connect(
             dbname=dbname,
             user=user,
@@ -18,36 +19,39 @@ class NewsDB:
         self.cursor = self.conn.cursor(cursor_factory=DictCursor)
     
     def __del__(self):
-        """Закрытие подключения при уничтожении объекта"""
+        """Закрытие подключения при уничтожении объекта
+           :return: None"""
         self.cursor.close()
         self.conn.close()
     
     def _get_user_role(self, user_id: int) -> Optional[str]:
-        """Получение роли пользователя"""
+        """Получение роли пользователя
+           :return: роль пользователя или None если пользователь не найден"""
         self.cursor.execute("SELECT user_role FROM users WHERE id = %s", (user_id,))
         result = self.cursor.fetchone()
         return result['user_role'] if result else None
     
     def _check_admin(self, user_id: int) -> bool:
-        """Проверка, является ли пользователь администратором"""
+        """Проверка, является ли пользователь администратором
+           :return: True если пользователь администратор, иначе False"""
         role = self._get_user_role(user_id)
         return role == 'admin'
     
     def _check_verified(self, user_id: int) -> bool:
-        """Проверка, является ли пользователь верифицированным"""
+        """Проверка, является ли пользователь верифицированным
+           :return: True если пользователь верифицирован или администратор, иначе False"""
         role = self._get_user_role(user_id)
         return role in ('verified', 'admin')
 
     # Методы для работы с пользователями
     def register_user(self, login: str, password: str) -> Optional[int]:
-        """Регистрация нового пользователя с использованием функции register_user"""
+        """Регистрация нового пользователя с использованием функции register_user
+           :return: ID нового пользователя или None если регистрация не удалась"""
         try:
-            # Вызываем функцию register_user из базы данных
             self.cursor.execute(
                 "SELECT register_user(%s, %s) AS result",
                 (login, password)
             )
-            # После вызова функции, получаем ID нового пользователя
             self.cursor.execute(
                 "SELECT id FROM users WHERE user_login = %s",
                 (login,)
@@ -57,8 +61,8 @@ class NewsDB:
             return None
 
     def authenticate_user(self, login: str, password: str) -> Optional[Dict]:
-        """Аутентификация пользователя с использованием функции authenticate_user"""
-        # Сначала проверяем аутентификацию через функцию
+        """Аутентификация пользователя с использованием функции authenticate_user
+           :return: словарь с данными пользователя (id, login, role) или None если аутентификация не удалась"""
         self.cursor.execute(
             "SELECT authenticate_user(%s, %s) AS auth_result",
             (login, password)
@@ -68,7 +72,6 @@ class NewsDB:
         if not auth_result:
             return None
         
-        # Если аутентификация успешна, получаем данные пользователя
         self.cursor.execute(
             "SELECT id, user_login, user_role FROM users WHERE user_login = %s",
             (login,)
@@ -82,7 +85,8 @@ class NewsDB:
         }
     
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
-        """Смена пароля пользователя"""
+        """Смена пароля пользователя
+           :return: True если пароль успешно изменен, иначе False"""
         self.cursor.execute(
             "SELECT user_password FROM users WHERE id = %s",
             (user_id,)
@@ -100,7 +104,8 @@ class NewsDB:
         return True
     
     def upgrade_to_verified(self, admin_id: int, user_id: int) -> bool:
-        """Повышение пользователя до верифицированного (админом)"""
+        """Повышение пользователя до верифицированного (админом)
+           :return: True если обновление успешно, иначе False"""
         if not self._check_admin(admin_id):
             return False
         
@@ -111,7 +116,8 @@ class NewsDB:
         return self.cursor.rowcount > 0
     
     def set_notification_preference(self, user_id: int, preference: str) -> bool:
-        """Установка предпочтений уведомлений"""
+        """Установка предпочтений уведомлений
+           :return: True если настройки успешно обновлены, иначе False"""
         self.cursor.execute(
             "UPDATE users SET notification = %s WHERE id = %s",
             (preference, user_id)
@@ -119,7 +125,8 @@ class NewsDB:
         return self.cursor.rowcount > 0
     
     def update_subscriptions(self, user_id: int, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> bool:
-        """Обновление подписок пользователя"""
+        """Обновление подписок пользователя
+           :return: True если подписки успешно обновлены, иначе False"""
         updates = []
         params = []
         
@@ -142,7 +149,8 @@ class NewsDB:
         return self.cursor.rowcount > 0
     
     def all_users(self):
-        '''Получение всех пользователей БД'''
+        '''Получение всех пользователей БД
+           :return: список всех пользователей с их ID, логинами и настройками уведомлений'''
         self.cursor.execute("""
             SELECT id, user_login, notification FROM users; 
             """)
@@ -151,11 +159,10 @@ class NewsDB:
     # Методы для работы с новостями
     def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None, 
                 source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
-        """
-        Добавление новости:
-        - Для верифицированных и админов: сразу публикуется (status=True)
-        - Для обычных: на модерацию (status=False)
-        """
+        """Добавление новости:
+           - Для верифицированных и админов: сразу публикуется (status=True)
+           - Для обычных: на модерацию (status=False)
+           :return: ID добавленной новости или None если добавление не удалось"""
         role = self._get_user_role(user_id)
         if role is None:
             return None
@@ -169,30 +176,36 @@ class NewsDB:
         )
         news_id = self.cursor.fetchone()['id']
         
-        # Если указан тег, создаем связь в tags_news
         if tag_id:
             self.add_tag_to_news(user_id, news_id, tag_id)
         
         return news_id
     
     def get_published_news(self, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> List[Dict]:
-        """Получение опубликованных новостей"""
-        query = "SELECT * FROM news WHERE status = TRUE"
+        """Получение опубликованных новостей с информацией об источниках
+        :return: список словарей с данными новостей, включая название источника и ссылку"""
+        query = """
+            SELECT n.*, s.name as source_name, s.link as source_link 
+            FROM news n
+            LEFT JOIN sources s ON n.source = s.id
+            WHERE n.status = TRUE
+        """
         params = []
         
         if tag_id is not None:
-            query += " AND id IN (SELECT newsID FROM tags_news WHERE tagID = %s)"
+            query += " AND n.id IN (SELECT newsID FROM tags_news WHERE tagID = %s)"
             params.append(tag_id)
         
         if source_id is not None:
-            query += " AND source = %s"
+            query += " AND n.source = %s"
             params.append(source_id)
         
         self.cursor.execute(query, params)
         return [dict(row) for row in self.cursor.fetchall()]
     
     def get_news_for_moderation(self, admin_id: int) -> List[Dict]:
-        """Получение новостей для модерации (админом)"""
+        """Получение новостей для модерации (админом)
+           :return: список словарей с новостями для модерации или пустой список если пользователь не админ"""
         if not self._check_admin(admin_id):
             return []
         
@@ -200,7 +213,8 @@ class NewsDB:
         return [dict(row) for row in self.cursor.fetchall()]
     
     def approve_news(self, admin_id: int, news_id: int) -> bool:
-        """Одобрение новости (админом)"""
+        """Одобрение новости (админом)
+           :return: True если новость успешно одобрена, иначе False"""
         if not self._check_admin(admin_id):
             return False
         
@@ -211,7 +225,8 @@ class NewsDB:
         return self.cursor.rowcount > 0
     
     def reject_news(self, admin_id: int, news_id: int) -> bool:
-        """Отклонение новости (админом)"""
+        """Отклонение новости (админом)
+           :return: True если новость успешно отклонена, иначе False"""
         if not self._check_admin(admin_id):
             return False
         
@@ -220,7 +235,8 @@ class NewsDB:
     
     # Методы для работы с тегами
     def add_tag(self, name: str) -> Optional[int]:
-        """Добавление нового тега"""
+        """Добавление нового тега
+           :return: ID добавленного тега или None если тег уже существует"""
         try:
             self.cursor.execute(
                 "INSERT INTO tags (name) VALUES (%s) RETURNING id",
@@ -231,12 +247,14 @@ class NewsDB:
             return None
     
     def get_all_tags(self) -> List[Dict]:
-        """Получение списка всех тегов"""
+        """Получение списка всех тегов
+           :return: список словарей с данными тегов"""
         self.cursor.execute("SELECT * FROM tags")
         return [dict(row) for row in self.cursor.fetchall()]
     
     def add_tag_to_news(self, user_id: int, news_id: int, tag_id: int) -> bool:
-        """Добавление тега к новости"""
+        """Добавление тега к новости
+           :return: True если тег успешно добавлен, иначе False"""
         if not (self._check_admin(user_id) or self._check_verified(user_id)):
             return False
         
@@ -251,7 +269,8 @@ class NewsDB:
     
     # Методы для работы с источниками
     def add_source(self, name: str, link: str) -> Optional[int]:
-        """Добавление нового источника"""
+        """Добавление нового источника
+           :return: ID добавленного источника или None если источник уже существует"""
         try:
             self.cursor.execute(
                 "INSERT INTO sources (name, link) VALUES (%s, %s) RETURNING id",
@@ -262,13 +281,15 @@ class NewsDB:
             return None
     
     def get_all_sources(self) -> List[Dict]:
-        """Получение списка всех источников"""
+        """Получение списка всех источников
+           :return: список словарей с данными источников"""
         self.cursor.execute("SELECT * FROM sources")
         return [dict(row) for row in self.cursor.fetchall()]
     
     # Методы для работы с папками
     def create_folder(self, user_id: int, folder_name: str) -> Optional[int]:
-        """Создание папки для пользователя"""
+        """Создание папки для пользователя
+           :return: ID созданной папки или None если создание не удалось"""
         self.cursor.execute(
             "SELECT user_login FROM users WHERE id = %s",
             (user_id,)
@@ -287,8 +308,8 @@ class NewsDB:
             return None
     
     def add_news_to_folder(self, user_id: int, folder_id: int, news_id: int) -> bool:
-        """Добавление новости в папку"""
-        # Проверяем, что папка принадлежит пользователю
+        """Добавление новости в папку
+           :return: True если новость успешно добавлена, иначе False"""
         self.cursor.execute(
             """SELECT 1 FROM folders f
                JOIN users u ON f.userLOG = u.user_login
@@ -305,7 +326,8 @@ class NewsDB:
         return self.cursor.rowcount > 0
     
     def get_user_folders(self, user_id: int) -> List[Dict]:
-        """Получение папок пользователя"""
+        """Получение папок пользователя
+           :return: список словарей с данными папок пользователя"""
         self.cursor.execute(
             """SELECT f.id, f.name, f.newsID 
                FROM folders f
@@ -316,8 +338,8 @@ class NewsDB:
         return [dict(row) for row in self.cursor.fetchall()]
     
     def suggest_news_source(self, user_id: int, link: str) -> bool:
-        """Отправка предложения нового источника"""
-        # Используем поле notification для хранения предложений
+        """Отправка предложения нового источника
+           :return: True если предложение успешно сохранено, иначе False"""
         self.cursor.execute(
             "UPDATE users SET notification = %s WHERE id = %s",
             (f"source_suggestion:{link}", user_id)
