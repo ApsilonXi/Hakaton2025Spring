@@ -15,17 +15,31 @@
         <div class="nav-upper">
             <h1 class="site-title fs-4"><img src="static/logo.svg" alt="Фактосфера" class="logo"></h1>
             <div class="nav-buttons mt-3">
-                <a href="{{ url_for('register') }}"><button class="registry-button">Регистрация</button></a>
-                <a href="{{ url_for('login') }}"><button class="login-button">Вход</button></a>
-                <button class="my-account-button d-none">Личный кабинет</button>
-                <button class="my-tags-button d-none">Мои теги</button>
-                <button class="my-follows-button d-none">Мои подписки</button>
-                <button class="logout-button d-none">Выйти</button>
-                <button class="news-requests-button d-none">Предложенные новости</button>
+                {% if 'user' not in session %}
+                    <!-- Кнопки для гостей -->
+                    <a href="{{ url_for('register') }}"><button class="registry-button">Регистрация</button></a>
+                    <a href="{{ url_for('login') }}"><button class="login-button">Вход</button></a>
+                {% else %}
+                    <!-- Кнопки для авторизованных пользователей -->
+                    {% if session['user']['role'] == 'admin' %}
+                        <!-- Кнопки только для админа -->
+                        <a href="#"><button class="news-requests-button">Предложенные новости</button></a>
+                    {% else %}
+                        <!-- Кнопки для обычных пользователей -->
+                        <a href="#"><button class="my-account-button">Личный кабинет</button></a>
+                        <a href="#"><button class="my-tags-button">Мои теги</button></a>
+                        <a href="#"><button class="my-follows-button">Мои подписки</button></a>
+                    {% endif %}
+                    <!-- Кнопка выхода для всех авторизованных -->
+                    <a href="{{ url_for('logout') }}"><button class="logout-button">Выйти</button></a>
+                {% endif %}
             </div>
         </div>
         <div class="nav-lower mt-3">
-            <button class="suggest-news-button w-100">Предложить новость</button>
+            {% if 'user' in session and session['user']['role'] != 'admin' %}
+                <!-- Кнопка "Предложить новость" только для обычных пользователей -->
+                <button class="suggest-news-button w-100">Предложить новость</button>
+            {% endif %}
         </div>
     </div>
 
@@ -85,7 +99,7 @@
                 </div>
     
                 <div class="saved">
-                    <h1 class="fs-4">Сохраненные</h1>
+                    <h1 class="fs-4"><a href="{{ url_for('my_folders') }}">Сохраненные</a></h1>
                     <div class="saved-cards-container">
                         <div class="saved-cards" id="savedCards">
                             <a href="#">
@@ -154,78 +168,32 @@
                     <input type="text" class="w-100" placeholder="Поиск...">
                 </div>
                 
-                <!-- Пример новостей с разными датами -->
-                <div class="news-card" data-date="2024-01-15">
+                <!-- Динамическое заполнение новостей -->
+                {% for item in news %}
+                <div class="news-card" data-date="{{ item.date.strftime('%Y-%m-%d') }}">
                     <div class="card">
                         <div class="card-upper">
-                            <h2 class="title fs-4">Новость от 15 января</h2>
-                            <p class="date text-muted small">15.01.2024</p>
-                            <p class="news-text my-2">Содержание новости за 15 января.</p>
+                            <h2 class="title fs-4">{{ item.title }}</h2>
+                            <p class="date text-muted small">{{ item.date.strftime('%d.%m.%Y') }}</p>
+                            <p class="news-text my-2">{{ item.content }}</p>
                         </div>
                         <div class="card-lower">
-                            <p class="news-author small text-muted">Автор 1</p>
+                            <p class="news-author small text-muted">
+                                {% if item.type_news %}
+                                    Новость
+                                {% else %}
+                                    Корпоративная новость
+                                {% endif %}
+                            </p>
                             <p class="card-buttons">
-                                <a href=""><button class="show-button">Прочитать</button></a>
+                                <a href="#"><button class="show-button">Прочитать</button></a>
                                 <button class="save-button">Сохранить</button>
                                 <button class="share-button">Поделиться</button>
                             </p>
                         </div>
                     </div>
                 </div>
-                
-                <div class="news-card" data-date="2024-01-20">
-                    <div class="card">
-                        <div class="card-upper">
-                            <h2 class="title fs-4">Новость от 20 января</h2>
-                            <p class="date text-muted small">20.01.2024</p>
-                            <p class="news-text my-2">Содержание новости за 20 января.</p>
-                        </div>
-                        <div class="card-lower">
-                            <p class="news-author small text-muted">Автор 2</p>
-                            <p class="card-buttons">
-                                <a href=""><button class="show-button">Прочитать</button></a>
-                                <button class="save-button">Сохранить</button>
-                                <button class="share-button">Поделиться</button>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="news-card" data-date="2024-01-10">
-                    <div class="card">
-                        <div class="card-upper">
-                            <h2 class="title fs-4">Новость от 10 января</h2>
-                            <p class="date text-muted small">10.01.2024</p>
-                            <p class="news-text my-2">Содержание новости за 10 января.</p>
-                        </div>
-                        <div class="card-lower">
-                            <p class="news-author small text-muted">Автор 3</p>
-                            <p class="card-buttons">
-                                <a href=""><button class="show-button">Прочитать</button></a>
-                                <button class="save-button">Сохранить</button>
-                                <button class="share-button">Поделиться</button>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="news-card" data-date="2024-01-25">
-                    <div class="card">
-                        <div class="card-upper">
-                            <h2 class="title fs-4">Новость от 25 января</h2>
-                            <p class="date text-muted small">25.01.2024</p>
-                            <p class="news-text my-2">Содержание новости за 25 января.</p>
-                        </div>
-                        <div class="card-lower">
-                            <p class="news-author small text-muted">Автор 4</p>
-                            <p class="card-buttons">
-                                <a href=""><button class="show-button">Прочитать</button></a>
-                                <button class="save-button">Сохранить</button>
-                                <button class="share-button">Поделиться</button>
-                            </p>
-                        </div>
-                    </div>
-                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
