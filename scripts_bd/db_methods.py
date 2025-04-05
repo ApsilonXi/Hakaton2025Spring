@@ -140,7 +140,7 @@ class NewsDB:
     def all_users(self):
         '''Получение всех пользователей БД'''
         self.cursor.execute("""
-            SELECT id, user_login FROM users; 
+            SELECT id, user_login, notification FROM users; 
             """)
         return self.cursor.fetchall()
     
