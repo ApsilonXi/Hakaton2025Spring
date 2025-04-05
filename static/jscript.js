@@ -85,3 +85,19 @@ document.addEventListener('DOMContentLoaded', function() {
     sortNews('date-desc');
     sortButton.textContent = 'По дате (↓)';
 });
+
+document.getElementById('newsSearch').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const newsCards = document.querySelectorAll('.news-card');
+    
+    newsCards.forEach(card => {
+        const title = card.querySelector('.title').textContent.toLowerCase();
+        const content = card.querySelector('.news-text').textContent.toLowerCase();
+        
+        if (title.includes(searchTerm) || content.includes(searchTerm)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
