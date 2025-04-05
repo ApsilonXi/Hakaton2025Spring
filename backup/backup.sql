@@ -17,6 +17,75 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+--
+-- Name: authenticate_user(character, character); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.authenticate_user(p_login character, p_password character) RETURNS boolean
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    stored_hash TEXT;
+BEGIN
+    -- Получаем хеш пароля из базы данных
+    SELECT user_password INTO stored_hash
+    FROM public.users
+    WHERE user_login = p_login;
+
+    -- Если пользователь не найден, возвращаем FALSE
+    IF NOT FOUND THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Сравниваем хеш введенного пароля с хранимым хешем
+    RETURN stored_hash = crypt(p_password, stored_hash);
+END;
+$$;
+
+
+ALTER FUNCTION public.authenticate_user(p_login character, p_password character) OWNER TO postgres;
+
+--
+-- Name: register_user(character, character, character, character); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.register_user(p_login character, p_password character, p_role character DEFAULT 'user'::bpchar, p_notification character DEFAULT '0'::bpchar) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    hashed_password TEXT;
+BEGIN
+    -- Проверяем, существует ли уже пользователь с таким логином
+    IF EXISTS (SELECT 1 FROM public.users WHERE user_login = p_login) THEN
+        RAISE EXCEPTION 'Пользователь с логином "%" уже существует', p_login;
+    END IF;
+
+    -- Хешируем пароль
+    hashed_password := crypt(p_password, gen_salt('bf'));
+
+    -- Вставляем данные в таблицу users
+    INSERT INTO public.users (user_login, user_password, user_role, notification)
+    VALUES (p_login, hashed_password, p_role, p_notification);
+END;
+$$;
+
+
+ALTER FUNCTION public.register_user(p_login character, p_password character, p_role character, p_notification character) OWNER TO postgres;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -68,7 +137,8 @@ CREATE TABLE public.news (
     content text NOT NULL,
     status boolean DEFAULT false,
     tag integer,
-    source integer
+    source integer,
+    date timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -276,7 +346,8 @@ CREATE TABLE public.users (
     user_role character(15) NOT NULL,
     notification character(20) DEFAULT '0'::bpchar,
     tag_subscription integer,
-    sources_subsc integer
+    sources_subsc integer,
+    telegram_id bigint DEFAULT 1000000000 NOT NULL
 );
 
 
@@ -370,12 +441,12 @@ COPY public.folders (id, userlog, name, newsid) FROM stdin;
 -- Data for Name: news; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.news (id, type_news, title, content, status, tag, source) FROM stdin;
-1	t	Новые технологии в IT	Содержание статьи о новых технологиях...	t	2	2
-2	t	Выборы 2023	Последние новости о выборах...	t	1	1
-3	f	Корпоративные новости	Внутренние новости нашей организации...	t	3	4
-4	t	Спортивные достижения	Новые рекорды в спорте...	f	4	3
-5	t	Советы по здоровью	Как сохранить здоровье...	f	5	1
+COPY public.news (id, type_news, title, content, status, tag, source, date) FROM stdin;
+1	t	Новые технологии в IT	Содержание статьи о новых технологиях...	t	2	2	2025-04-05 15:14:55.008649
+2	t	Выборы 2023	Последние новости о выборах...	t	1	1	2025-04-05 15:14:55.008649
+3	f	Корпоративные новости	Внутренние новости нашей организации...	t	3	4	2025-04-05 15:14:55.008649
+4	t	Спортивные достижения	Новые рекорды в спорте...	f	4	3	2025-04-05 15:14:55.008649
+5	t	Советы по здоровью	Как сохранить здоровье...	f	5	1	2025-04-05 15:14:55.008649
 \.
 
 
@@ -458,11 +529,12 @@ COPY public.user_tag_subscriptions (user_id, tag_id) FROM stdin;
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.users (id, user_login, user_password, user_role, notification, tag_subscription, sources_subsc) FROM stdin;
-1	admin               	admin123                                                                                            	admin          	1                   	\N	\N
-4	moderator           	mod123                                                                                              	verified       	1                   	\N	\N
-3	regular_user        	user123                                                                                             	user           	0                   	2	1
-2	verified_user       	user123                                                                                             	verified       	1                   	1	2
+COPY public.users (id, user_login, user_password, user_role, notification, tag_subscription, sources_subsc, telegram_id) FROM stdin;
+1	admin               	admin123                                                                                            	admin          	1                   	\N	\N	1000000000
+4	moderator           	mod123                                                                                              	verified       	1                   	\N	\N	1000000000
+3	regular_user        	user123                                                                                             	user           	0                   	2	1	1000000000
+2	verified_user       	user123                                                                                             	verified       	1                   	1	2	1000000000
+6	test_user           	$2a$06$S4gQYZG06fDNiyDjFdBpD.QVJKISp/s8bQ40t9FoR7R.E6BbvpGnW                                        	user           	1                   	\N	\N	1000000000
 \.
 
 
@@ -512,7 +584,7 @@ SELECT pg_catalog.setval('public.tags_news_id_seq', 7, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 4, true);
+SELECT pg_catalog.setval('public.users_id_seq', 6, true);
 
 
 --
