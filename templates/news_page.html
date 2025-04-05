@@ -13,7 +13,7 @@
     <!-- Навигация - всегда слева -->
     <div class="nav-container p-3 col-lg-2">
         <div class="nav-upper">
-            <h1 class="site-title fs-4"><img src="{{ url_for('static', filename='logo.svg') }}" alt="Фактосфера" class="logo"></h1>
+            <h1 class="site-title fs-4"><a href="/"><img src="{{ url_for('static', filename='logo.svg') }}" alt="Фактосфера" class="logo"></a></h1>
             <div class="nav-buttons mt-3">
                 {% if 'user' not in session %}
                     <!-- Кнопки для гостей -->
@@ -26,8 +26,7 @@
                         <a href="#"><button class="news-requests-button">Предложенные новости</button></a>
                     {% else %}
                         <!-- Кнопки для обычных пользователей -->
-                        <a href="#"><button class="my-account-button">Личный кабинет</button></a>
-                        <a href="#"><button class="my-tags-button">Мои теги</button></a>
+                        <a href="{{ url_for('my_profile') }}"><button class="my-account-button">Личный кабинет</button></a>
                         <a href="#"><button class="my-follows-button">Мои подписки</button></a>
                     {% endif %}
                     <!-- Кнопка выхода для всех авторизованных -->
@@ -38,7 +37,7 @@
         <div class="nav-lower mt-3">
             {% if 'user' in session and session['user']['role'] != 'admin' %}
                 <!-- Кнопка "Предложить новость" только для обычных пользователей -->
-                <button class="suggest-news-button w-100">Предложить новость</button>
+                <a href="{{ url_for('suggest_news') }}"><button class="suggest-news-button w-100">Предложить новость</button></a>
             {% endif %}
         </div>
     </div>
