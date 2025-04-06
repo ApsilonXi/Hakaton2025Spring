@@ -3,7 +3,7 @@ from psycopg2 import sql, OperationalError
 from psycopg2.extras import DictCursor
 from typing import Optional, List, Dict
 import hashlib
-from parsers.class_News import *
+from class_News import *
 import time
 
 class NewsDB:
@@ -21,29 +21,11 @@ class NewsDB:
         self.cursor = self.conn.cursor(cursor_factory=DictCursor)
 
     def __del__(self):
-<<<<<<< HEAD
-        """Закрытие подключения при уничтожении объекта
-           :return: None"""
-        self.cursor.close()
-        self.conn.close()
-
-    def _hash_password(self, password: str) -> str:
-        """Хеширование пароля"""
-        salt = uuid.uuid4().hex
-        return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
-
-    def _check_password(self, hashed_password: str, user_password: str) -> bool:
-        """Проверка пароля"""
-        password, salt = hashed_password.split(':')
-        return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
-
-=======
         if hasattr(self, 'cursor'):
             self.cursor.close()
         if hasattr(self, 'conn'):
             self.conn.close()
     
->>>>>>> emiliya
     def _get_user_role(self, user_id: int) -> Optional[str]:
         """Получение роли пользователя
            :return: роль пользователя или None если пользователь не найден"""
@@ -103,10 +85,7 @@ class NewsDB:
             'login': user['user_login'].strip(),
             'role': user['user_role'].strip()
         }
-<<<<<<< HEAD
-=======
     
->>>>>>> emiliya
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
         """Смена пароля пользователя с использованием SQL-функций
         :return: True если пароль успешно изменен, иначе False"""
@@ -212,57 +191,16 @@ class NewsDB:
         )
         self.cursor.execute(query, params)
         return self.cursor.rowcount > 0
-<<<<<<< HEAD
-
-    def all_users(self):
-        '''Все пользователи сайта и статус подписки и телеграмм айди'''
-        self.cursor.execute("""
-            SELECT id, user_login, notification, telegram_id FROM users;
-=======
     
     def all_users(self):
         '''Получение всех пользователей БД
         :return: список всех пользователей с их ID, логинами и настройками уведомлений'''
         self.cursor.execute("""
             SELECT id, user_login, notification, telegram_id, user_role FROM users; 
->>>>>>> emiliya
             """)
         return [dict(row) for row in self.cursor.fetchall()]
 
     # Методы для работы с новостями
-<<<<<<< HEAD
-
-    def get_all_tags(self):
-        """Получение списка всех доступных тегов"""
-        self.cursor.execute("SELECT id, name FROM tags ORDER BY name")
-        return self.cursor.fetchall()
-
-    def get_or_create_source(self, link: str, name: str = None) -> int:
-        """Получение или создание источника по ссылке"""
-        self.cursor.execute("SELECT id FROM sources WHERE link = %s", (link,))
-        result = self.cursor.fetchone()
-
-        if result:
-            return result['id']
-
-        # Если имя не указано, используем домен из ссылки
-        if not name:
-            from urllib.parse import urlparse
-            name = urlparse(link).netloc or "Неизвестный источник"
-
-        self.cursor.execute(
-            "INSERT INTO sources (name, link) VALUES (%s, %s) RETURNING id",
-            (name, link)
-        )
-        self.conn.commit()
-        return self.cursor.fetchone()['id']
-    def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None,
-                source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
-        """
-        Добавление новости:
-        - Всегда публикуется (status=True)
-        """
-=======
     def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None, 
             source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
         """Добавление новости:
@@ -272,7 +210,6 @@ class NewsDB:
         if role is None:
             return None
 
->>>>>>> emiliya
         try:
             self.cursor.execute(
                 """INSERT INTO news (title, content, tag, source, type_news)
@@ -289,10 +226,6 @@ class NewsDB:
             if tag_id:
                 self.add_tag_to_news(user_id, news_id, tag_id)
 
-<<<<<<< HEAD
-            self.conn.commit()
-=======
->>>>>>> emiliya
             return news_id
         except psycopg2.Error:
             return None
@@ -332,53 +265,7 @@ class NewsDB:
             params.append(source_id)
 
         self.cursor.execute(query, params)
-<<<<<<< HEAD
-        news_items = []
-
-        for row in self.cursor.fetchall():
-            item = dict(row)
-            # Очищаем теги от None и лишних пробелов
-            item['tags'] = [tag.strip() for tag in (item['tags'] or []) if tag]
-            news_items.append(item)
-
-        return news_items
-
-    def get_news_by_id(self, news_id: int) -> Optional[Dict]:
-        """Получение новости по ID с информацией о тегах и источнике
-        :param news_id: ID новости
-        :return: словарь с данными новости (включая список тегов) или None, если не найдена"""
-        # Получаем основную информацию о новости
-        news_query = """
-            SELECT 
-                n.*, 
-                s.name as source_name, 
-                s.link as source_link
-            FROM news n
-            LEFT JOIN sources s ON n.source = s.id
-            WHERE n.id = %s
-        """
-        self.cursor.execute(news_query, (news_id,))
-        news_item = self.cursor.fetchone()
-
-        if not news_item:
-            return None
-
-        news_item = dict(news_item)
-
-        # Получаем все теги для этой новости
-        tags_query = """
-            SELECT t.name 
-            FROM tags_news tn
-            JOIN tags t ON tn.tagid = t.id
-            WHERE tn.newsid = %s
-        """
-        self.cursor.execute(tags_query, (news_id,))
-        news_item['tags'] = [row['name'].strip() for row in self.cursor.fetchall()]
-
-        return news_item
-=======
         return [dict(row) for row in self.cursor.fetchall()]
->>>>>>> emiliya
 
     def get_news_for_moderation(self, admin_id: int) -> List[Dict]:
         """Получение новостей для модерации (админом)
@@ -796,27 +683,6 @@ class NewsDB:
 
 
     def update_user_telegram_id(self, user_id: int, telegram_id: int):
-<<<<<<< HEAD
-        print(f"ТГ токен пользователя {user_id} установлен на {telegram_id} ")
-        try:
-            self.cursor.execute(
-                "UPDATE users SET telegram_id = %s WHERE id = %s",
-                (telegram_id, user_id)
-            )
-            self.conn.commit()
-        except Exception as e:
-            self.conn.rollback()
-
-    def update_subscribe(self, user_id: int, subscribe_mod: str):
-        try:
-            self.cursor.execute(
-                "UPDATE users SET notification = %s WHERE id = %s",
-                (subscribe_mod, user_id)
-            )
-            self.conn.commit()
-        except Exception as e:
-            self.conn.rollback()
-=======
         self.cursor.execute(
             "UPDATE users SET telegram_id = %s WHERE id = %s",
             (telegram_id, user_id)
@@ -879,4 +745,3 @@ class NewsDB:
         """
         self.cursor.execute(query, (user_id, user_id))
         return [dict(row) for row in self.cursor.fetchall()]
->>>>>>> emiliya

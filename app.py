@@ -1,18 +1,16 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, session, jsonify, send_file, make_response
-from scripts_bd.db_methods import *
+from db_methods import *
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+import datetime
 import re
-<<<<<<< HEAD
-=======
 
 def sanitize_filename(name):
     return re.sub(r'[\\/*?:"<>|]', "", name)
 
->>>>>>> emiliya
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Важно использовать надежный ключ в продакшене
 DB = NewsDB(password="12345")
@@ -26,16 +24,27 @@ def index():
             'role': session['user']['role']
         }
     
-    # Получаем все опубликованные новости из базы данных
+    # Получаем новости и форматируем даты
     news = DB.get_published_news()
+    for item in news:
+        if 'date' in item and item['date']:  # Проверяем наличие даты
+            if isinstance(item['date'], str):  # Если дата - строка
+                # Преобразуем строку в datetime объект (используем strptime, а не stryttae)
+                try:
+                    item['date'] = datetime.datetime.strptime(item['date'], '%Y-%m-%d')
+                except ValueError:
+                    # Если формат даты не совпадает, используем текущую дату
+                    item['date'] = datetime.datetime.now()
+            # Если это уже datetime объект, оставляем как есть
+        else:
+            item['date'] = datetime.datetime.now()  # Или установите дату по умолчанию
     
-    # Фильтруем только актуальные новости (type_news == False)
-    actual_news = [item for item in news if not item['type_news']]
+    actual_news = [item for item in news if not item.get('type_news', False)]
     
-    return render_template("index.html", 
+    return render_template("index.html",
                          user_info=user_info, 
                          news=news,
-                         actual_news=actual_news[:5])  # Ограничиваем до 5 новостей
+                         actual_news=actual_news[:5])
 
 @app.route("/news/<int:news_id>")
 def news_page(news_id):
@@ -51,17 +60,9 @@ def news_page(news_id):
     actual_news = [item for item in all_news if not item['type_news']]
     
     return render_template("news_page.html", 
-                         news_item=news_item,
-                         actual_news=actual_news[:5])
+                     news_item=news_item,
+                     actual_news=actual_news[:5])
 
-<<<<<<< HEAD
-
-
-def sanitize_filename(name):
-    return re.sub(r'[\\/*?:"<>|]', "", name)
-
-=======
->>>>>>> emiliya
 @app.route('/download-pdf')
 def download_pdf():
     try:
@@ -109,10 +110,6 @@ def download_pdf():
     except Exception as e:
         return str(e), 500
 
-<<<<<<< HEAD
-
-=======
->>>>>>> emiliya
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':

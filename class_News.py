@@ -51,9 +51,3 @@ class News:
         self.text = clean_text
 
 
-x = News("news", "author", "date", "title",
-         "https://наука.рф/news/samye-interesnye-otkrytiya-uchenykh-za-pervuyu-nedelyu-aprelya/")
-
-x.parse_news_item_science_rf()
-x.clean_html()
-print(x.text)
