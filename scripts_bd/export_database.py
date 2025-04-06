@@ -43,8 +43,4 @@ def create_backup(password:str):
     except subprocess.CalledProcessError as e:
         print("Ошибка", f"Ошибка при создании бекапа: {e}")
 
-"""
-    ПРИМЕР ВЫЗОВА:
-    create_backup("password")
-"""
-create_backup('12345')
+'''create_backup("12345")  - мила'''

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Личный кабинет</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="d-flex flex-column flex-lg-row">
+    <!-- Навигация - всегда слева -->
+    <div class="nav-container p-3 col-lg-2">
+        <div class="nav-upper">
+            <h1 class="site-title fs-4"><a href="/"><img src="{{ url_for('static', filename='logo.svg') }}" alt="Фактосфера" class="logo"></a></h1>
+            
+            <div class="nav-buttons mt-3">
+                {% if 'user' not in session %}
+                    <!-- Кнопки для гостей -->
+                    <a href="{{ url_for('register') }}"><button class="registry-button">Регистрация</button></a>
+                    <a href="{{ url_for('login') }}"><button class="login-button">Вход</button></a>
+                {% else %}
+                    <!-- Кнопки для авторизованных пользователей -->
+                    {% if session['user']['role'] == 'admin' %}
+                        <!-- Кнопки только для админа -->
+                        <a href="#"><button class="news-requests-button">Предложенные новости</button></a>
+                    {% else %}
+                        <!-- Кнопки для обычных пользователей -->
+                        <a href="{{ url_for('my_profile') }}"><button class="my-account-button">Личный кабинет</button></a>
+                        <a href="#"><button class="my-follows-button">Мои подписки</button></a>
+                    {% endif %}
+                    <!-- Кнопка выхода для всех авторизованных -->
+                    <a href="{{ url_for('logout') }}"><button class="logout-button">Выйти</button></a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="nav-lower mt-3">
+            {% if 'user' in session and session['user']['role'] != 'admin' %}
+                <!-- Кнопка "Предложить новость" только для обычных пользователей -->
+                <a href="{{ url_for('suggest_news') }}"><button class="suggest-news-button w-100">Предложить новость</button></a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Основной контент и боковая панель -->
+    <div class="d-flex flex-column flex-lg-row flex-grow-1">
+        <!-- Основной контент -->
+        <div class="main-container p-3 flex-grow-1 order-lg-1">
+            <h1 class="mb-4">Личный кабинет</h1>
+            
+            <div class="profile-info mb-5">
+                <h2 class="fs-5 mb-3">Основная информация</h2>
+                <div class="row mb-3">
+                    <div class="col-md-2 fw-bold">Логин:</div>
+                    <div class="col-md-10">{{ user_info['login'] }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-2 fw-bold">Роль:</div>
+                    <div class="col-md-10">{{ user_info['role'] }}</div>
+                </div>
+            </div>
+            
+            <div class="change-password mb-5">
+                <h2 class="fs-5 mb-3">Смена пароля</h2>
+                <form method="POST" action="{{ url_for('my_profile') }}">
+                    <div class="mb-3">
+                        <label for="old_password" class="form-label">Текущий пароль</label>
+                        <input type="password" class="form-control" id="old_password" name="old_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">Новый пароль</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Изменить пароль</button>
+                </form>
+            </div>
+            
+            <div class="telegram-token">
+                <h2 class="fs-5 mb-3">Токен для Telegram бота</h2>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="token" value="{{ token }}" readonly>
+                    <button class="btn btn-outline-secondary" onclick="copyToken()">Копировать</button>
+                </div>
+                <p class="text-muted small">Используйте этот токен для подключения Telegram бота к вашему аккаунту</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function copyToken() {
+            const tokenInput = document.getElementById('token');
+            tokenInput.select();
+            document.execCommand('copy');
+            
+            // Показать уведомление
+            const originalText = event.target.textContent;
+            event.target.textContent = 'Скопировано!';
+            setTimeout(() => {
+                event.target.textContent = originalText;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
