@@ -4,6 +4,7 @@ from psycopg2.extras import DictCursor
 from typing import Optional, List, Dict
 import hashlib
 from class_News import *
+from parser import *
 import time
 
 class NewsDB:
@@ -11,7 +12,7 @@ class NewsDB:
         """Инициализация подключения к базе данных
            :return: None"""
         self.conn = psycopg2.connect(
-            host="127.0.0.1",
+            host="localhost",
             port="5432",
             user="postgres",
             password=password,
@@ -423,17 +424,6 @@ class NewsDB:
             return False
 
     # Методы для работы с источниками
-    def add_source(self, name: str, link: str) -> Optional[int]:
-        """Добавление нового источника
-           :return: ID добавленного источника или None если источник уже существует"""
-        try:
-            self.cursor.execute(
-                "INSERT INTO sources (name, link) VALUES (%s, %s) RETURNING id",
-                (name, link)
-            )
-            return self.cursor.fetchone()['id']
-        except psycopg2.IntegrityError:
-            return None
 
     def get_all_sources(self) -> List[Dict]:
         """Получение списка всех источников
@@ -745,3 +735,61 @@ class NewsDB:
         """
         self.cursor.execute(query, (user_id, user_id))
         return [dict(row) for row in self.cursor.fetchall()]
+    
+    def get_full_source_list(self):
+        try:
+            print('Получено')
+            self.cursor.execute(
+                "SELECT link FROM news"
+            )
+            links = self.cursor.fetchall()
+            return links
+        except Exception as e:
+            self.conn.rollback()
+
+    # Методы для работы с источниками
+    def add_source(self, name: str, link: str) -> Optional[int]:
+        """Добавление нового источника
+           :return: ID добавленного источника или None если источник уже существует"""
+        try:
+            self.cursor.execute(
+                "INSERT INTO sources (name, link) VALUES (%s, %s) RETURNING id",
+                (name, link)
+            )
+            return self.cursor.fetchone()['id']
+        except psycopg2.IntegrityError:
+            return None
+        
+    def add_news_auto(self):
+        news_list = parse_science_rf()
+        link_list = self.get_full_source_list()
+        sources = self.get_all_sources()
+
+        for news in news_list:
+            is_present = any(d['link'] == news.source for d in link_list)
+            if not is_present:
+                print('News in progress...')
+                source_id = None
+                print(news.author)
+                for s in sources:
+                    if s['link'] == news.author:
+                        source_id = s['id']
+                        break
+
+                if not source_id:
+                    source_id = self.add_source("Наука.рф", news.author)
+
+                try:
+                    self.cursor.execute(
+                        """INSERT INTO news (type_news, title, content, tag, source, date, link)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                        (True, news.title, news.text, 1, 2, news.date, news.source)  # Всегда status=True
+                    )
+
+                    self.conn.commit()
+                    print('News_loaded')
+                except Exception as e:
+                    print(f"Error adding news: {e}")
+                    self.conn.rollback()
+            else:
+                print("News_exist")

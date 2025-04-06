@@ -10,7 +10,7 @@ from telegram.ext import (
 )
 
 import datetime
-from scripts_bd.db_methods import *
+from db_methods import *
 
 CONFIG = {
     'token': '7530398431:AAFnSCkcu4_XaeRJ7Cz3_RRZ2O-wfYERous',
@@ -22,7 +22,7 @@ CONFIG = {
 
 db = NewsDB()
 user_db = db.all_users()
-registered_users = [item[2] for item in user_db]
+
 
 
 class UserState:
@@ -40,11 +40,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # Проверяем, есть ли пользователь в базе данных
     for user in user_db:
-        if user[2] == user_id:  # Проверяем telegram id (4-й элемент в списке)
-            user_state.id = user[0]
-            user_state.token = user[1].strip()  # Логин (удаляем лишние пробелы)
+        if user['telegram_id'] == user_id:  # Проверяем telegram id (4-й элемент в списке)
+            user_state.id = user['id']
+            user_state.token = user['user_login'].strip()  # Логин (удаляем лишние пробелы)
             user_state.is_authenticated = True
-            user_state.subscription = int(user[2].strip())
+            user_state.subscription = int(user['telegram_id'].strip())
             break
 
     # Сохраняем состояние пользователя в контексте
@@ -219,7 +219,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Ищем пользователя в базе по ключу (формат: user_id + user_login)
         user_found = None
         for user in user_db:
-            expected_token = f"{user[0]}{user[1].strip()}"  # user_id + login
+            expected_token = f"{user['id']}{user['user_login'].strip()}"  # user_id + login
             if input_token == expected_token:
                 user_found = user
                 break
@@ -331,11 +331,11 @@ def main() -> None:
 
     job_queue = application.job_queue
 
-    application.job_queue.run_once(
+    '''application.job_queue.run_once(
         daily_digest,
         when=10,
         chat_id=1333624885  # Укажите реальный chat_id
-    )
+    )'''
 
     # Теперь можно настраивать задачи
     job_queue.run_daily(
