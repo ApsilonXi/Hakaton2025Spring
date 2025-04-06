@@ -10,19 +10,20 @@ class NewsDB:
         """Инициализация подключения к базе данных
            :return: None"""
         self.conn = psycopg2.connect(
-            dbname=dbname,
-            user=user,
+            host="127.0.0.1",
+            port="5432",
+            user="postgres",
             password=password,
-            host=host
+            dbname="news_db"  # Должно совпадать с POSTGRES_DB
         )
         self.conn.autocommit = True
         self.cursor = self.conn.cursor(cursor_factory=DictCursor)
 
     def __del__(self):
-        """Закрытие подключения при уничтожении объекта
-           :return: None"""
-        self.cursor.close()
-        self.conn.close()
+        if hasattr(self, 'cursor'):
+            self.cursor.close()
+        if hasattr(self, 'conn'):
+            self.conn.close()
     
     def _get_user_role(self, user_id: int) -> Optional[str]:
         """Получение роли пользователя
@@ -693,3 +694,22 @@ class NewsDB:
             (telegram_id, user_id)
         )
         return self.cursor.rowcount > 0
+    
+    def get_by_user_id(self, user_id):
+        """Получение подписок на теги по айди юзера"""
+        self.cursor.execute("""
+            SELECT 
+                uts.user_id, 
+                t.name AS tag_name
+            FROM 
+                user_tag_subscriptions uts
+            JOIN 
+                tags t ON uts.tag_id = t.id
+            WHERE 
+                uts.user_id = %s; 
+            """, (user_id,))
+        tags_user = self.cursor.fetchall()
+        if tags_user != []:
+            return tags_user
+        else:
+            return False
