@@ -101,3 +101,4 @@ document.getElementById('newsSearch').addEventListener('input', function() {
         }
     });
 });
+

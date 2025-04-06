@@ -1,6 +1,11 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, session, jsonify
+from flask import Flask, render_template, redirect, url_for, request, flash, session, jsonify, send_file, make_response
 from scripts_bd.db_methods import *
-
+from io import BytesIO
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import re
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Важно использовать надежный ключ в продакшене
 DB = NewsDB(password="password")
@@ -41,6 +46,59 @@ def news_page(news_id):
     return render_template("news_page.html", 
                          news_item=news_item,
                          actual_news=actual_news[:5])
+
+
+
+def sanitize_filename(name):
+    return re.sub(r'[\\/*?:"<>|]', "", name)
+
+@app.route('/download-pdf')
+def download_pdf():
+    try:
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=A4)
+        
+        pdfmetrics.registerFont(TTFont('DejaVu', 'static/DejaVuSans.ttf'))
+        p.setFont("DejaVu", 12)
+
+        title = request.args.get('title', 'Название статьи')
+        date = request.args.get('date', '01.01.2025')
+        tags = request.args.get('tags', 'Без тега')
+        content = request.args.get('content', 'Содержание статьи')
+
+        # Очистим заголовок, чтобы использовать как имя файла
+        safe_title = sanitize_filename(title) + ".pdf"
+
+        y = 800
+        p.setFont("DejaVu", 16)
+        p.drawString(50, y, title)
+        y -= 30
+
+        p.setFont("DejaVu", 12)
+        p.drawString(50, y, f"Дата: {date}")
+        y -= 20
+        p.drawString(50, y, f"Теги: {tags}")
+        y -= 30
+
+        text = p.beginText(50, y)
+        text.setFont("DejaVu", 12)
+        for line in content.split('\n'):
+            text.textLine(line)
+        p.drawText(text)
+
+        p.showPage()
+        p.save()
+
+        buffer.seek(0)
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=safe_title,
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        return str(e), 500
+
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
