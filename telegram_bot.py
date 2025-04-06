@@ -259,8 +259,7 @@ async def get_latest_news(update: Update, context: ContextTypes.DEFAULT_TYPE, us
     news = ''
 
     for count, item in enumerate(cut_list):
-        news += f'{count+1}. {item['title']}\n{item['link']}\n\n'
-
+        news += f'{count + 1}. {item['title']}\n{item['link']}\n\n'
 
     keyboard = [
         [InlineKeyboardButton("📋 Меню", callback_data='menu')]
@@ -284,6 +283,8 @@ async def fetch_news_from_api(news: List[dict], user_id: int = None) -> str:
     if user_id:
         user_tags = db.get_by_user_id(user_id)
         print(f"Теги юзеров {user_tags}")
+
+    return 'Здесь будут ваши новости! Как только они появятся...'
 
 
 async def daily_digest(context: ContextTypes.DEFAULT_TYPE) -> None:
