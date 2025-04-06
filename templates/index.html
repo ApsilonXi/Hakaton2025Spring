@@ -125,7 +125,7 @@
         <div class="main-container p-3 flex-grow-1 order-lg-1">
             <div class="sort-buttons d-flex justify-content-between mb-3">
                 <div class="lsb">
-                    <button class="all-news-button me-2">Все новости</button>
+                    <a href="/"><button class="all-news-button me-2">Все новости</button></a>
                     <button class="following-button">Подписки</button>
                 </div>
                 <div class="rsb">
@@ -286,6 +286,38 @@
                 });
             }
         });
+        const followingButton = document.querySelector('.following-button');
+        if (followingButton) {
+            followingButton.addEventListener('click', async function() {
+                // Помечаем активную кнопку
+                document.querySelector('.all-news-button').classList.remove('active');
+                this.classList.add('active');
+                
+                // Загружаем новости по подпискам
+                try {
+                    const response = await fetch('/following');
+                    if (!response.ok) throw new Error('Ошибка загрузки');
+                    
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Обновляем только контейнер с новостями
+                    const newNewsContainer = doc.querySelector('#newsContainer');
+                    document.querySelector('#newsContainer').innerHTML = newNewsContainer.innerHTML;
+                    
+                    // Обновляем популярные теги
+                    const newPopularTags = doc.querySelector('.popular-tags');
+                    if (newPopularTags) {
+                        document.querySelector('.popular-tags').innerHTML = newPopularTags.innerHTML;
+                    }
+                    
+                } catch (error) {
+                    console.error('Ошибка загрузки подписок:', error);
+                    alert('Не удалось загрузить новости по подпискам');
+                }
+            });
+        }
     </script>
 </body>
 </html>

@@ -6,27 +6,10 @@ import hashlib
 from parsers.class_News import *
 import time
 
-def wait_for_db():
-    for _ in range(10):  # 10 попыток
-        try:
-            conn = psycopg2.connect(
-                dbname="news_db",
-                user="postgres",
-                password="12345",
-                host="database",
-                port="5432"
-            )
-            conn.close()
-            return True
-        except OperationalError:
-            time.sleep(5)  # 5 секунд между попытками
-    return False
-
 class NewsDB:
     def __init__(self, dbname='news_db', user='postgres', password='12345', host='localhost'):
         """Инициализация подключения к базе данных
            :return: None"""
-        wait_for_db
         self.conn = psycopg2.connect(
             host="127.0.0.1",
             port="5432",
@@ -731,3 +714,41 @@ class NewsDB:
             return tags_user
         else:
             return False
+        
+    def get_news_by_user_subscriptions(self, user_id: int) -> List[Dict]:
+        """Получение новостей по подпискам пользователя (теги и источники)
+        :return: список словарей с новостями, соответствующими подпискам пользователя"""
+        query = """
+            SELECT DISTINCT
+                n.id,
+                n.type_news,
+                n.title,
+                n.content,
+                n.source,
+                n.date,
+                s.name as source_name, 
+                s.link as source_link,
+                ARRAY_AGG(DISTINCT t.name) as tags
+            FROM news n
+            LEFT JOIN sources s ON n.source = s.id
+            LEFT JOIN tags_news tn ON n.id = tn.newsid
+            LEFT JOIN tags t ON tn.tagid = t.id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM offers o 
+                WHERE o.link = 'news_moderation:' || n.id::text
+            )
+            AND (
+                EXISTS (
+                    SELECT 1 FROM user_tag_subscriptions uts 
+                    WHERE uts.user_id = %s AND uts.tag_id = t.id
+                )
+                OR EXISTS (
+                    SELECT 1 FROM user_source_subscriptions uss 
+                    WHERE uss.user_id = %s AND uss.source_id = n.source
+                )
+            )
+            GROUP BY n.id, s.name, s.link
+            ORDER BY n.date DESC
+        """
+        self.cursor.execute(query, (user_id, user_id))
+        return [dict(row) for row in self.cursor.fetchall()]

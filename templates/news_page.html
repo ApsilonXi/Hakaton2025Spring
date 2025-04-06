@@ -153,6 +153,13 @@
                             <button class="fnew-save-button">
                                 Сохранить
                             </button>
+                            <a href="{{ url_for('download_pdf', 
+                                    title=news_item.title, 
+                                    date=news_item.date.strftime('%d.%m.%Y'), 
+                                    tags=news_item.tags|join(','), 
+                                    content=news_item.content) }}">
+                                <button class="fnew-download-button">Скачать PDF</button>
+                            </a>
                             <a href="{{ url_for('index') }}">
                                 <button class="fnew-back-button">
                                     Назад

@@ -245,3 +245,33 @@ document.addEventListener('DOMContentLoaded', () => {
     setupTabSwitching();
     // Остальная инициализация...
 });
+
+// Заменяем существующий обработчик на:
+tabs.following.addEventListener('click', async () => {
+    try {
+        const response = await fetch('/following');
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Обновляем контейнер с новостями
+        containers.allNews.innerHTML = doc.getElementById('newsContainer').innerHTML;
+        
+        // Обновляем популярные теги
+        const popularTags = doc.querySelector('.popular-tags');
+        if (popularTags) {
+            document.querySelector('.popular-tags').innerHTML = popularTags.innerHTML;
+        }
+        
+        // Обновляем активные кнопки
+        tabs.allNews.classList.remove('active');
+        tabs.following.classList.add('active');
+        tabs.proposedNews.classList.remove('active');
+        
+    } catch (error) {
+        console.error('Ошибка загрузки подписок:', error);
+        alert('Не удалось загрузить новости по подпискам');
+    }
+});
