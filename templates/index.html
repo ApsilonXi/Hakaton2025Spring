@@ -178,7 +178,7 @@
                         <div class="card-upper">
                             <h2 class="title fs-4">{{ item.title }}</h2>
                             <p class="date text-muted small">{{ item.date.strftime('%d.%m.%Y') }}</p>
-                            <p class="news-text my-2">{{ item.content }}</p>
+                            <p class="news-text my-2">{{ item.content | safe }}</p>
                         </div>
                         <div class="card-lower">
                             <div class="d-flex justify-content-between align-items-center mb-2">

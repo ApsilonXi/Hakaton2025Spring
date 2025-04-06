@@ -61,7 +61,7 @@
                         <a href="#">
                             <div class="admin-card">
                                 <h3 class="a-title fs-5">{{ item['title'] }}</h3>
-                                <p class="a-date small text-muted">{{ item['date'].strftime('%d.%m.%Y') }}</p>
+                                <p class="a-date small text-muted">{{ item['date'] }}</p>
                                 <p class="a-news-text">{{ item['content'][:100] }}{% if item['content']|length > 100 %}...{% endif %}</p>
                             </div>
                         </a>
@@ -127,7 +127,7 @@
                 <div class="fullnews" id="articleContent">
                     <div class="fnews-heading">
                         <h5 class="fnews-date">
-                            {{ news_item['date'].strftime('%d.%m.%Y') }}
+                            {{ news_item['date'] }}
                         </h5>
                         <h5 class="fnews-tags">
                             {% if news_item['tags'] %}
@@ -145,7 +145,7 @@
                                 {{ news_item['title'] }}
                             </h1>
                             <p>
-                                {{ news_item['content'] }}
+                                {{ news_item['content'] | safe }}
                             </p>
                         </div>
                         <div class="fnew-lower">
@@ -160,21 +160,14 @@
                             <button class="fnew-save-button">
                                 Сохранить
                             </button>
-<<<<<<< HEAD
-
-=======
->>>>>>> emiliya
                             <a href="{{ url_for('download_pdf', 
                                     title=news_item.title, 
-                                    date=news_item.date.strftime('%d.%m.%Y'), 
+                                    date=news_item.date, 
                                     tags=news_item.tags|join(','), 
                                     content=news_item.content) }}">
                                 <button class="fnew-download-button">Скачать PDF</button>
                             </a>
-<<<<<<< HEAD
                             
-=======
->>>>>>> emiliya
                             <a href="{{ url_for('index') }}">
                                 <button class="fnew-back-button">
                                     Назад
