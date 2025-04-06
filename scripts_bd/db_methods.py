@@ -314,7 +314,6 @@ class NewsDB:
         return self.cursor.rowcount > 0
 
     def update_user_telegram_id(self, user_id: int, telegram_id: int):
-        print(f"ТГ токен пользователя {user_id} установлен на {telegram_id} ")
         try:
             self.cursor.execute(
                 "UPDATE users SET telegram_id = %s WHERE id = %s",

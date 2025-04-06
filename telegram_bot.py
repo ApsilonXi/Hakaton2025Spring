@@ -9,6 +9,7 @@ from telegram.ext import (
     filters
 )
 
+import datetime
 from scripts_bd.db_methods import *
 
 CONFIG = {
@@ -41,7 +42,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     for user in user_db:
         if user[2] == user_id:  # Проверяем telegram id (4-й элемент в списке)
             user_state.id = user[0]
-            print(user_state.id)
             user_state.token = user[1].strip()  # Логин (удаляем лишние пробелы)
             user_state.is_authenticated = True
             user_state.subscription = int(user[2].strip())
@@ -120,9 +120,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     query = update.callback_query
     await query.answer()
 
-    user_id = update.effective_user.id
     user_state = context.user_data['user_state']
-    print(user_state.id)
 
     if query.data == 'link_account':
         await query.edit_message_text(
@@ -253,12 +251,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
 
 
-async def validate_token(token: str) -> bool:
-    """Проверяет валидность токена (заглушка)"""
-    # Реализуйте проверку токена с вашим API
-    return len(token) == 32  # Пример проверки
-
-
 async def get_latest_news(update: Update, context: ContextTypes.DEFAULT_TYPE, user_state: UserState) -> None:
     """Получает и отправляет последние новости"""
     query = update.callback_query
@@ -290,23 +282,25 @@ async def fetch_news_from_api(token: str = None) -> str:
         return "1. Общая новость 1\n2. Общая новость 2\n3. Общая новость 3"
 
 
-async def send_daily_digest(context: ContextTypes.DEFAULT_TYPE) -> None:
+async def daily_digest(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Отправляет ежедневную сводку"""
-    user_id = context.job.user_id
-    user_state = user_db.get(user_id, None)
 
-    if user_state and user_state.daily_digest:
-        news = await fetch_news_from_api(user_state.token)
-        keyboard = [
-            [InlineKeyboardButton("📋 Меню", callback_data='menu')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
+    users = db.all_users()
+    print(users)
 
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=f"🌅 Доброе утро! Ваша ежедневная сводка:\n\n{news}",
-            reply_markup=reply_markup
-        )
+    for user in users:
+        if user[2].strip() == '2' and user[3] != 1000000000:
+            try:
+                news = await fetch_news_from_api()
+                await context.bot.send_message(
+                    chat_id=user[3],
+                    text=f"🌅 Доброе утро! Ваша ежедневная сводка:\n\n{news}",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("📋 Меню", callback_data="menu")]
+                    ])
+                )
+            except Exception as e:
+                logging.error(f"Ошибка отправки дайджеста для {user[0]}: {e}")
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -327,6 +321,21 @@ def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     application = Application.builder().token(CONFIG['token']).build()
+
+    job_queue = application.job_queue
+
+    application.job_queue.run_once(
+        daily_digest,
+        when=100,
+        chat_id=1333624885  # Укажите реальный chat_id
+    )
+
+    # Теперь можно настраивать задачи
+    job_queue.run_daily(
+        daily_digest,
+        time=datetime.time(hour=9, minute=0),
+        days=(0, 1, 2, 3, 4, 5, 6)
+    )
 
     # Обработчики команд
     application.add_handler(CommandHandler("start", start))
