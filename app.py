@@ -6,9 +6,16 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import re
+<<<<<<< HEAD
+=======
+
+def sanitize_filename(name):
+    return re.sub(r'[\\/*?:"<>|]', "", name)
+
+>>>>>>> emiliya
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Важно использовать надежный ключ в продакшене
-DB = NewsDB(password="password")
+DB = NewsDB(password="12345")
 
 @app.route("/")
 def index():
@@ -47,11 +54,14 @@ def news_page(news_id):
                          news_item=news_item,
                          actual_news=actual_news[:5])
 
+<<<<<<< HEAD
 
 
 def sanitize_filename(name):
     return re.sub(r'[\\/*?:"<>|]', "", name)
 
+=======
+>>>>>>> emiliya
 @app.route('/download-pdf')
 def download_pdf():
     try:
@@ -99,7 +109,10 @@ def download_pdf():
     except Exception as e:
         return str(e), 500
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> emiliya
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -346,6 +359,213 @@ def logout():
     session.pop('user', None)
     flash('Вы успешно вышли из системы', 'success')
     return redirect(url_for('index'))
+
+@app.route('/api/offers')
+def get_offers():
+    if 'user' not in session or session['user']['role'] != 'admin':
+        return jsonify({"error": "Требуются права администратора"}), 403
+    
+    try:
+        offers = DB.get_offers_for_moderation()
+        return jsonify(offers)
+    except Exception as e:
+        print(f"Ошибка в /api/offers: {str(e)}")
+        return jsonify({"error": "Внутренняя ошибка сервера"}), 500
+
+@app.route('/api/offers/<int:offer_id>/<action>', methods=['POST'])
+def process_offer(offer_id, action):
+    if 'user' not in session or session['user']['role'] != 'admin':
+        return jsonify({"error": "Требуются права администратора"}), 403
+        
+    if action not in ('approve', 'reject'):
+        return jsonify({"error": "Недопустимое действие"}), 400
+    
+    try:
+        success = DB.process_offer(offer_id, action)
+        if success:
+            return jsonify({"success": True})
+        return jsonify({"error": "Не удалось обработать предложение"}), 400
+    except Exception as e:
+        print(f"Ошибка обработки предложения: {str(e)}")
+        return jsonify({"error": "Внутренняя ошибка сервера"}), 500
+    
+@app.route("/my_subscriptions")
+def my_subscriptions():
+    if 'user' not in session:
+        flash('Для доступа к этой странице необходимо авторизоваться', 'error')
+        return redirect(url_for('login'))
+    
+    # Получаем подписки пользователя
+    user_id = session['user']['id']
+    tag_subscriptions = DB.get_user_tag_subscriptions(user_id)
+    source_subscriptions = DB.get_user_source_subscriptions(user_id)
+    
+    # Получаем популярные теги и источники для модального окна
+    popular_tags = DB.get_popular_tags()
+    popular_sources = DB.get_popular_sources()
+    
+    return render_template("my_subscriptions.html",
+                         user_info=session['user'],
+                         tag_subscriptions=tag_subscriptions,
+                         source_subscriptions=source_subscriptions,
+                         popular_tags=popular_tags,
+                         popular_sources=popular_sources)
+    
+@app.route('/api/subscribe', methods=['POST'])
+def subscribe():
+    if 'user' not in session:
+        return jsonify({'success': False, 'message': 'Требуется авторизация'}), 401
+    
+    if not request.is_json:
+        return jsonify({'success': False, 'message': 'Неверный формат данных'}), 415
+    
+    try:
+        data = request.get_json()
+        sub_type = data.get('type')
+        sub_id = data.get('id')
+        
+        if not sub_type or not sub_id:
+            return jsonify({'success': False, 'message': 'Не указаны параметры подписки'}), 400
+        
+        if sub_type == 'tag':
+            success = DB.subscribe_to_tag(session['user']['id'], sub_id)
+        elif sub_type == 'source':
+            success = DB.subscribe_to_source(session['user']['id'], sub_id)
+        else:
+            return jsonify({'success': False, 'message': 'Неверный тип подписки'}), 400
+        
+        return jsonify({'success': success, 'message': 'Подписка успешно добавлена'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/unsubscribe', methods=['POST'])
+def unsubscribe():
+    if 'user' not in session:
+        return jsonify({'success': False, 'message': 'Требуется авторизация'}), 401
+    
+    if not request.is_json:
+        return jsonify({'success': False, 'message': 'Неверный формат данных'}), 415
+    
+    try:
+        data = request.get_json()
+        sub_type = data.get('type')
+        sub_id = data.get('id')
+        
+        if not sub_type or not sub_id:
+            return jsonify({'success': False, 'message': 'Не указаны параметры подписки'}), 400
+        
+        if sub_type == 'tag':
+            success = DB.unsubscribe_from_tag(session['user']['id'], sub_id)
+        elif sub_type == 'source':
+            success = DB.unsubscribe_from_source(session['user']['id'], sub_id)
+        else:
+            return jsonify({'success': False, 'message': 'Неверный тип подписки'}), 400
+        
+        return jsonify({'success': success, 'message': 'Отписка выполнена успешно'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+@app.route('/my_folders_data')
+def my_folders_data():
+    if 'user' not in session:
+        return jsonify({'error': 'Требуется авторизация'}), 401
+    
+    folders = DB.get_user_folders(session['user']['id'])
+    # Добавляем количество новостей в каждой папке
+    folders_with_count = []
+    for folder in folders:
+        news_count = DB.get_news_count_in_folder(folder['id'])
+        folders_with_count.append({
+            'id': folder['id'],
+            'name': folder['name'],
+            'news_count': news_count
+        })
+    
+    return jsonify(folders_with_count)
+
+@app.route("/add_to_folder", methods=['POST'])
+def add_to_folder():
+    if 'user' not in session:
+        return jsonify({'success': False, 'message': 'Требуется авторизация'}), 401
+    
+    data = request.get_json()
+    news_id = data.get('news_id')
+    folder_id = data.get('folder_id')
+    
+    if not news_id or not folder_id:
+        return jsonify({'success': False, 'message': 'Не указаны новость или папка'}), 400
+    
+    # Проверяем, что папка принадлежит пользователю
+    folders = DB.get_user_folders(session['user']['id'])
+    if not any(folder['id'] == folder_id for folder in folders):
+        return jsonify({'success': False, 'message': 'Папка не найдена или нет прав доступа'}), 403
+    
+    # Проверяем, есть ли уже новость в папке
+    if DB.is_news_in_folder(news_id, folder_id):
+        return jsonify({'success': False, 'message': 'Эта новость уже есть в выбранной папке'}), 400
+    
+    # Добавляем новость в папку
+    success = DB.add_news_to_folder(session['user']['id'], folder_id, news_id)
+    
+    if success:
+        return jsonify({'success': True, 'message': 'Новость успешно сохранена'})
+    else:
+        return jsonify({'success': False, 'message': 'Не удалось сохранить новость'}), 500
+    
+@app.route("/admin")
+def admin_panel():
+    if 'user' not in session or session['user']['role'] != 'admin':
+        flash('Доступ запрещен', 'error')
+        return redirect(url_for('index'))
+    
+    users = DB.all_users()
+    print(f"DEBUG: Found {len(users)} users")  # Отладочный вывод
+    return render_template("admin_panel.html", 
+                         users=users,
+                         user_info=session['user'])
+
+@app.route('/api/change_user_role', methods=['POST'])
+def change_user_role():
+    if 'user' not in session or session['user']['role'] != 'admin':
+        return jsonify({'success': False, 'message': 'Требуются права администратора'}), 403
+    
+    data = request.get_json()
+    user_id = data.get('user_id')
+    new_role = data.get('new_role')
+    
+    try:
+        DB.cursor.execute(
+            "UPDATE users SET user_role = %s WHERE id = %s",
+            (new_role, user_id)
+        )
+        DB.conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        DB.conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/following')
+def following():
+    if 'user' not in session:
+        flash('Для доступа к этой странице необходимо авторизоваться', 'error')
+        return redirect(url_for('login'))
+    
+    # Получаем новости по подпискам пользователя
+    user_id = session['user']['id']
+    subscribed_news = DB.get_news_by_user_subscriptions(user_id)
+    
+    # Получаем актуальные новости для боковой панели
+    all_news = DB.get_published_news()
+    actual_news = [item for item in all_news if not item['type_news']]
+    
+    # Получаем популярные теги
+    popular_tags = [tag['name'] for tag in DB.get_popular_tags()]
+    
+    return render_template("index.html", 
+                         news=subscribed_news,
+                         actual_news=actual_news[:5],
+                         popular_tags=popular_tags,
+                         is_following_view=True)
 
 if __name__ == "__main__":
     app.run(debug=True)

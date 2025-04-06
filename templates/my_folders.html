@@ -182,5 +182,104 @@
             });
         });
     </script>
+    <!-- Модальное окно для сохранения новости -->
+<div class="modal fade" id="saveToFolderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Сохранить в папку</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="folderListContainer">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Загрузка...</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+      // Глобальная переменная для хранения ID новости, которую сохраняем
+      let currentNewsIdToSave = null;
+  
+      // Функция для показа модального окна сохранения
+      function showSaveModal(newsId) {
+          currentNewsIdToSave = newsId;
+          const modal = new bootstrap.Modal(document.getElementById('saveToFolderModal'));
+          
+          // Загружаем список папок
+          fetch('/my_folders_data')
+              .then(response => response.json())
+              .then(folders => {
+                  const container = document.getElementById('folderListContainer');
+                  if (folders.length === 0) {
+                      container.innerHTML = `
+                          <div class="alert alert-info">
+                              У вас нет папок. Сначала создайте папку!
+                          </div>
+                      `;
+                  } else {
+                      container.innerHTML = `
+                          <div class="list-group">
+                              ${folders.map(folder => `
+                                  <button type="button" class="list-group-item list-group-item-action" 
+                                      onclick="saveToFolder(${folder.id})">
+                                      ${folder.name} (${folder.news_count})
+                                  </button>
+                              `).join('')}
+                          </div>
+                      `;
+                  }
+              })
+              .catch(error => {
+                  console.error('Error:', error);
+                  document.getElementById('folderListContainer').innerHTML = `
+                      <div class="alert alert-danger">
+                          Ошибка загрузки папок
+                      </div>
+                  `;
+              });
+          
+          modal.show();
+      }
+  
+      // Функция для сохранения новости в папку
+      function saveToFolder(folderId) {
+          if (!currentNewsIdToSave) return;
+          
+          fetch('/add_to_folder', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': '{{ csrf_token() }}'
+              },
+              body: JSON.stringify({
+                  news_id: currentNewsIdToSave,
+                  folder_id: folderId
+              })
+          })
+          .then(response => response.json())
+          .then(data => {
+              const modal = bootstrap.Modal.getInstance(document.getElementById('saveToFolderModal'));
+              modal.hide();
+              
+              if (data.success) {
+                  alert('Новость успешно сохранена в папку!');
+              } else {
+                  alert('Ошибка: ' + data.message);
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              alert('Произошла ошибка при сохранении');
+          });
+      }
+  </script>
 </body>
 </html>

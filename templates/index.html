@@ -23,11 +23,11 @@
                     <!-- Кнопки для авторизованных пользователей -->
                     {% if session['user']['role'] == 'admin' %}
                         <!-- Кнопки только для админа -->
-                        <a href="#"><button class="news-requests-button">Предложенные новости</button></a>
+                        <a href="#proposedNews"><button class="news-requests-button">Предложенные новости</button></a>
                     {% else %}
                         <!-- Кнопки для обычных пользователей -->
                         <a href="{{ url_for('my_profile') }}"><button class="my-account-button">Личный кабинет</button></a>
-                        <a href="#"><button class="my-follows-button">Мои подписки</button></a>
+                        <a href="{{ url_for('my_subscriptions') }}"><button class="my-follows-button">Мои подписки</button></a>
                     {% endif %}
                     <!-- Кнопка выхода для всех авторизованных -->
                     <a href="{{ url_for('logout') }}"><button class="logout-button">Выйти</button></a>
@@ -42,6 +42,9 @@
             {% elif 'user' in session and session['user']['role'] != 'admin' %}
                 <!-- Кнопка "Предложить новость" только для обычных пользователей -->
                 <a href="{{ url_for('suggest_news') }}"><button class="suggest-news-button w-100">Предложить новость</button></a>
+            {% endif %}
+            {% if 'user' in session and session['user']['role'] == 'admin' %}
+                <a href="{{ url_for('admin_panel') }}"><button class="admin-panel-button">Админ панель</button></a>
             {% endif %}
         </div>
     </div>
@@ -122,7 +125,7 @@
         <div class="main-container p-3 flex-grow-1 order-lg-1">
             <div class="sort-buttons d-flex justify-content-between mb-3">
                 <div class="lsb">
-                    <button class="all-news-button me-2">Все новости</button>
+                    <a href="/"><button class="all-news-button me-2">Все новости</button></a>
                     <button class="following-button">Подписки</button>
                 </div>
                 <div class="rsb">
@@ -134,6 +137,18 @@
                             <li><a class="dropdown-item" href="#" data-sort="date-asc">По дате (сначала старые)</a></li>
                             <li><a class="dropdown-item" href="#" data-sort="date-desc">По дате (сначала новые)</a></li>
                         </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="proposed-news-container mb-5" id="proposedNews" style="display: none;">
+                <h2 class="fs-4 mb-3">Предложенные новости</h2>
+                <div class="proposed-cards" id="proposedCards">
+                    <!-- Здесь будут динамически загружаться предложенные новости -->
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -271,6 +286,38 @@
                 });
             }
         });
+        const followingButton = document.querySelector('.following-button');
+        if (followingButton) {
+            followingButton.addEventListener('click', async function() {
+                // Помечаем активную кнопку
+                document.querySelector('.all-news-button').classList.remove('active');
+                this.classList.add('active');
+                
+                // Загружаем новости по подпискам
+                try {
+                    const response = await fetch('/following');
+                    if (!response.ok) throw new Error('Ошибка загрузки');
+                    
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // Обновляем только контейнер с новостями
+                    const newNewsContainer = doc.querySelector('#newsContainer');
+                    document.querySelector('#newsContainer').innerHTML = newNewsContainer.innerHTML;
+                    
+                    // Обновляем популярные теги
+                    const newPopularTags = doc.querySelector('.popular-tags');
+                    if (newPopularTags) {
+                        document.querySelector('.popular-tags').innerHTML = newPopularTags.innerHTML;
+                    }
+                    
+                } catch (error) {
+                    console.error('Ошибка загрузки подписок:', error);
+                    alert('Не удалось загрузить новости по подпискам');
+                }
+            });
+        }
     </script>
 </body>
 </html>
