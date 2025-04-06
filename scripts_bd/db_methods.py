@@ -1,14 +1,32 @@
 import psycopg2
-from psycopg2 import sql
+from psycopg2 import sql, OperationalError
 from psycopg2.extras import DictCursor
 from typing import Optional, List, Dict
 import hashlib
 from parsers.class_News import *
+import time
+
+def wait_for_db():
+    for _ in range(10):  # 10 попыток
+        try:
+            conn = psycopg2.connect(
+                dbname="news_db",
+                user="postgres",
+                password="12345",
+                host="database",
+                port="5432"
+            )
+            conn.close()
+            return True
+        except OperationalError:
+            time.sleep(5)  # 5 секунд между попытками
+    return False
 
 class NewsDB:
     def __init__(self, dbname='news_db', user='postgres', password='12345', host='localhost'):
         """Инициализация подключения к базе данных
            :return: None"""
+        wait_for_db
         self.conn = psycopg2.connect(
             host="127.0.0.1",
             port="5432",
