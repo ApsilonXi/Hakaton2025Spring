@@ -19,7 +19,6 @@ def parse_science_rf():
 
         # Ищем все блоки с новостями
         articles = soup.find_all("a", class_="news-item g-blur-bg")
-        print(len(articles))
 
         for article in articles:
             # Извлекаем href (ссылку) из атрибута <a>
@@ -27,9 +26,12 @@ def parse_science_rf():
             full_link = "https://наука.рф" + link  # Добавляем базовый URL, если ссылка относительная
             date = article.find("div", class_="news-item__date").text.strip()
             title = article.find("div", class_="news-item__title").text.strip()
-            author = "наука.рф"
+            author = "https://наука.рф"
 
-            news_list.append(News("news", author, date, title, full_link))
+            news = News("news", author, date, title, full_link)
+            news.parse_news_item_science_rf()
+            news.clean_html()
+            news_list.append(news)
 
     else:
         print("Ошибка загрузки страницы. Код ответа:", response.status_code)

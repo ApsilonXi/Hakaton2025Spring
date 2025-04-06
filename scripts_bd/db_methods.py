@@ -4,6 +4,11 @@ from psycopg2.extras import DictCursor
 from typing import Optional, List, Dict
 import hashlib
 import uuid
+from datetime import datetime, time
+import locale
+from parsers.parser import parse_science_rf
+
+locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 
 
 class NewsDB:
@@ -94,6 +99,7 @@ class NewsDB:
             'login': user['user_login'].strip(),
             'role': user['user_role'].strip()
         }
+
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
         """Смена пароля пользователя с использованием SQL-функций
         :return: True если пароль успешно изменен, иначе False"""
@@ -207,13 +213,6 @@ class NewsDB:
             """)
         return self.cursor.fetchall()
 
-    # Методы для работы с новостями
-
-    def get_all_tags(self):
-        """Получение списка всех доступных тегов"""
-        self.cursor.execute("SELECT id, name FROM tags ORDER BY name")
-        return self.cursor.fetchall()
-
     def get_or_create_source(self, link: str, name: str = None) -> int:
         """Получение или создание источника по ссылке"""
         self.cursor.execute("SELECT id FROM sources WHERE link = %s", (link,))
@@ -233,8 +232,9 @@ class NewsDB:
         )
         self.conn.commit()
         return self.cursor.fetchone()['id']
-    def add_news(self, user_id: int, title: str, content: str, tag_id: Optional[int] = None,
-                source_id: Optional[int] = None, is_organization: bool = False) -> Optional[int]:
+
+    def add_news(self, title: str, content: str, tag_id: Optional[int] = None,
+                 source_id: Optional[str] = None, is_organization: bool = False) -> Optional[int]:
         """
         Добавление новости:
         - Всегда публикуется (status=True)
@@ -247,16 +247,47 @@ class NewsDB:
             )
             news_id = self.cursor.fetchone()['id']
 
-            # Если указан тег, создаем связь в tags_news
-            if tag_id:
-                self.add_tag_to_news(user_id, news_id, tag_id)
-
             self.conn.commit()
             return news_id
         except Exception as e:
             print(f"Error adding news: {e}")
             self.conn.rollback()
             return None
+
+    def add_news_auto(self):
+        news_list = parse_science_rf()
+        link_list = self.get_full_source_list()
+        sources = self.get_all_sources()
+
+        for news in news_list:
+            is_present = any(d['link'] == news.source for d in link_list)
+            if is_present:
+                print('News in progress...')
+                source_id = None
+                print(news.author)
+                for s in sources:
+                    if s['link'] == news.author:
+                        source_id = s['id']
+                        break
+
+                if not source_id:
+                    source_id = self.add_source("Наука.рф", news.author)
+
+                try:
+                    self.cursor.execute(
+                        """INSERT INTO news (type_news, title, content, status,tag, source, date, link)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                        (True, news.title, news.text, True, 1, source_id, news.date, news.source)  # Всегда status=True
+                    )
+                    news_id = self.cursor.fetchone()['id']
+
+                    self.conn.commit()
+                    print('News_loaded')
+                except Exception as e:
+                    print(f"Error adding news: {e}")
+                    self.conn.rollback()
+            else:
+                print("News_exist")
 
     def get_published_news(self, tag_id: Optional[int] = None, source_id: Optional[int] = None) -> List[Dict]:
         """Получение опубликованных новостей с информацией об источниках и тегах
@@ -419,6 +450,14 @@ class NewsDB:
         self.cursor.execute("SELECT * FROM sources")
         return [dict(row) for row in self.cursor.fetchall()]
 
+    def get_id_source_by_link(self, link):
+        """Получение списка всех источников
+           :return: Айди ресурса"""
+        print('Getting source')
+        self.cursor.execute("SELECT id FROM sources WHERE link = %s", (link,))
+        source_id = self.cursor.fetchall()
+        return source_id
+
     # Методы для работы с папками
     def create_folder(self, user_id: int, folder_name: str) -> Optional[int]:
         """Создание папки для пользователя
@@ -485,7 +524,6 @@ class NewsDB:
             self.conn.rollback()
             return False
 
-
     def update_user_telegram_id(self, user_id: int, telegram_id: int):
         try:
             self.cursor.execute(
@@ -505,3 +543,34 @@ class NewsDB:
             self.conn.commit()
         except Exception as e:
             self.conn.rollback()
+
+    def get_by_user_id(self, user_id):
+        """Получение подписок на теги по айди юзера"""
+        self.cursor.execute("""
+            SELECT 
+                uts.user_id, 
+                t.name AS tag_name
+            FROM 
+                user_tag_subscriptions uts
+            JOIN 
+                tags t ON uts.tag_id = t.id
+            WHERE 
+                uts.user_id = %s; 
+            """, (user_id,))
+        tags_user = self.cursor.fetchall()
+        if tags_user != []:
+            return tags_user
+        else:
+            return False
+
+    def get_full_source_list(self):
+        try:
+            print('Получено')
+            self.cursor.execute(
+                "SELECT link FROM news"
+            )
+            links = self.cursor.fetchall()
+            return links
+        except Exception as e:
+            self.conn.rollback()
+

@@ -143,7 +143,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         user_state.subscription = 0
         user_state.is_authenticated = False
         db.update_user_telegram_id(user_state.id, 1000000000)
-        print(f"Обновлен пользователь: {user_state.id}")
         db.update_subscribe(user_state.id, "0")
         context.user_data['user_state'] = user_state
         await show_unauthenticated_menu_from_query(update)
@@ -254,7 +253,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def get_latest_news(update: Update, context: ContextTypes.DEFAULT_TYPE, user_state: UserState) -> None:
     """Получает и отправляет последние новости"""
     query = update.callback_query
+    news = db.get_published_news()
 
+    print("Это?")
     news = await fetch_news_from_api(user_state.token if user_state.is_authenticated else None)
 
     keyboard = [
@@ -274,24 +275,25 @@ async def get_latest_news(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         )
 
 
-async def fetch_news_from_api(user_id: int = None) -> str:
+async def fetch_news_from_api(news: List[dict], user_id: int = None) -> str:
     """Получает новости с API (заглушка)"""
-    if token:
-        return "1. Персонализированная новость 1\n2. Персонализированная новость 2"
-    else:
-        return "1. Общая новость 1\n2. Общая новость 2\n3. Общая новость 3"
+    if user_id:
+        user_tags = db.get_by_user_id(user_id)
+        print(f"Теги юзеров {user_tags}")
 
 
 async def daily_digest(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Отправляет ежедневную сводку"""
 
     users = db.all_users()
+    news = db.get_published_news()
+    print(news)
     print(users)
 
     for user in users:
         if user[2].strip() == '2' and user[3] != 1000000000:
             try:
-                news = await fetch_news_from_api(user[0])
+                news = await fetch_news_from_api(news, user[0])
                 await context.bot.send_message(
                     chat_id=user[3],
                     text=f"🌅 Доброе утро! Ваша ежедневная сводка:\n\n{news}",
@@ -326,14 +328,14 @@ def main() -> None:
 
     application.job_queue.run_once(
         daily_digest,
-        when=100,
+        when=10,
         chat_id=1333624885  # Укажите реальный chat_id
     )
 
     # Теперь можно настраивать задачи
     job_queue.run_daily(
         daily_digest,
-        time=datetime.time(hour=9, minute=0),
+        time=datetime.time(hour=11, minute=0),
         days=(0, 1, 2, 3, 4, 5, 6)
     )
 
