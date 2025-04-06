@@ -79,16 +79,16 @@ class NewsDB:
             (login, password)
         )
         auth_result = self.cursor.fetchone()['auth_result']
-        
+
         if not auth_result:
             return None
-        
+
         self.cursor.execute(
             "SELECT id, user_login, user_role FROM users WHERE user_login = %s",
             (login,)
         )
         user = self.cursor.fetchone()
-        
+
         return {
             'id': user['id'],
             'login': user['user_login'].strip(),
@@ -97,69 +97,71 @@ class NewsDB:
     def change_password(self, user_id: int, old_password: str, new_password: str) -> bool:
         """Смена пароля пользователя с использованием SQL-функций
         :return: True если пароль успешно изменен, иначе False"""
-        
+
         # 1. Проверяем старый пароль
         self.cursor.execute(
             "SELECT authenticate_user(user_login, %s) AS auth_result FROM users WHERE id = %s",
             (old_password, user_id)
         )
         result = self.cursor.fetchone()
-        
+
         if not result or not result['auth_result']:
             return False
-        
+
         # 2. Хешируем новый пароль с помощью SQL-функции crypt
         self.cursor.execute(
             "SELECT crypt(%s, gen_salt('bf')) AS new_hash",
             (new_password,)
         )
         new_hash = self.cursor.fetchone()['new_hash']
-        
+
         # 3. Обновляем пароль в базе
         self.cursor.execute(
             "UPDATE users SET user_password = %s WHERE id = %s",
             (new_hash, user_id)
         )
         return True
-    
-    def update_user_telegram_id(self, user_id: int, telegram_id: int) -> bool:
-        """Обновление telegram_id пользователя с хешированием
-        :param user_id: ID пользователя
-        :param telegram_id: Telegram ID пользователя
-        :return: True если обновление успешно, иначе False"""
-        
-        # Проверяем существование пользователя
-        self.cursor.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
-        if not self.cursor.fetchone():
-            return False
-        
-        # Хешируем telegram_id с помощью SHA-256
-        hashed_telegram_id = hashlib.sha256(str(telegram_id).encode()).hexdigest()
-        
-        self.cursor.execute(
-            "UPDATE users SET telegram_id = %s WHERE id = %s",
-            (hashed_telegram_id, user_id)
-        )
-        return self.cursor.rowcount > 0
-    
+
+    # Спросить на счёт фрагмента. Сравнить со вторым и оставить только 1
+
+    # def update_user_telegram_id(self, user_id: int, telegram_id: int) -> bool:
+    #     """Обновление telegram_id пользователя с хешированием
+    #     :param user_id: ID пользователя
+    #     :param telegram_id: Telegram ID пользователя
+    #     :return: True если обновление успешно, иначе False"""
+    #
+    #     # Проверяем существование пользователя
+    #     self.cursor.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
+    #     if not self.cursor.fetchone():
+    #         return False
+    #
+    #     # Хешируем telegram_id с помощью SHA-256
+    #     hashed_telegram_id = hashlib.sha256(str(telegram_id).encode()).hexdigest()
+    #
+    #     self.cursor.execute(
+    #         "UPDATE users SET telegram_id = %s WHERE id = %s",
+    #         (hashed_telegram_id, user_id)
+    #     )
+    #     return self.cursor.rowcount > 0
+
     def verify_telegram_id(self, user_id: int, telegram_id: int) -> bool:
         """Проверка соответствия telegram_id пользователю
         :param user_id: ID пользователя
         :param telegram_id: Telegram ID для проверки
         :return: True если telegram_id соответствует, иначе False"""
-        
+
         self.cursor.execute(
             "SELECT telegram_id FROM users WHERE id = %s",
             (user_id,)
         )
         result = self.cursor.fetchone()
-        
+
         if not result or not result['telegram_id']:
             return False
-        
+
         # Хешируем предоставленный telegram_id для сравнения
         hashed_input = hashlib.sha256(str(telegram_id).encode()).hexdigest()
-        
+
         return hashed_input == result['telegram_id']
 
     def upgrade_to_verified(self, admin_id: int, user_id: int) -> bool:
@@ -171,15 +173,6 @@ class NewsDB:
         self.cursor.execute(
             "UPDATE users SET user_role = 'verified' WHERE id = %s",
             (user_id,)
-        )
-        return self.cursor.rowcount > 0
-
-    def set_notification_preference(self, user_id: int, preference: str) -> bool:
-        """Установка предпочтений уведомлений
-           :return: True если настройки успешно обновлены, иначе False"""
-        self.cursor.execute(
-            "UPDATE users SET notification = %s WHERE id = %s",
-            (preference, user_id)
         )
         return self.cursor.rowcount > 0
 
@@ -225,15 +218,15 @@ class NewsDB:
         """Получение или создание источника по ссылке"""
         self.cursor.execute("SELECT id FROM sources WHERE link = %s", (link,))
         result = self.cursor.fetchone()
-        
+
         if result:
             return result['id']
-        
+
         # Если имя не указано, используем домен из ссылки
         if not name:
             from urllib.parse import urlparse
             name = urlparse(link).netloc or "Неизвестный источник"
-        
+
         self.cursor.execute(
             "INSERT INTO sources (name, link) VALUES (%s, %s) RETURNING id",
             (name, link)
@@ -257,7 +250,7 @@ class NewsDB:
             # Если указан тег, создаем связь в tags_news
             if tag_id:
                 self.add_tag_to_news(user_id, news_id, tag_id)
-                
+
             self.conn.commit()
             return news_id
         except Exception as e:
@@ -300,15 +293,15 @@ class NewsDB:
 
         self.cursor.execute(query, params)
         news_items = []
-        
+
         for row in self.cursor.fetchall():
             item = dict(row)
             # Очищаем теги от None и лишних пробелов
             item['tags'] = [tag.strip() for tag in (item['tags'] or []) if tag]
             news_items.append(item)
-        
+
         return news_items
-    
+
     def get_news_by_id(self, news_id: int) -> Optional[Dict]:
         """Получение новости по ID с информацией о тегах и источнике
         :param news_id: ID новости
@@ -325,12 +318,12 @@ class NewsDB:
         """
         self.cursor.execute(news_query, (news_id,))
         news_item = self.cursor.fetchone()
-        
+
         if not news_item:
             return None
-        
+
         news_item = dict(news_item)
-        
+
         # Получаем все теги для этой новости
         tags_query = """
             SELECT t.name 
@@ -340,9 +333,9 @@ class NewsDB:
         """
         self.cursor.execute(tags_query, (news_id,))
         news_item['tags'] = [row['name'].strip() for row in self.cursor.fetchall()]
-        
+
         return news_item
-    
+
     def get_news_for_moderation(self, admin_id: int) -> List[Dict]:
         """Получение новостей для модерации (админом)
            :return: список словарей с новостями для модерации или пустой список если пользователь не админ"""
@@ -494,8 +487,22 @@ class NewsDB:
 
 
     def update_user_telegram_id(self, user_id: int, telegram_id: int):
-        self.cursor.execute(
-            "UPDATE users SET telegram_id = %s WHERE id = %s",
-            (telegram_id, user_id)
-        )
-        return self.cursor.rowcount > 0
+        print(f"ТГ токен пользователя {user_id} установлен на {telegram_id} ")
+        try:
+            self.cursor.execute(
+                "UPDATE users SET telegram_id = %s WHERE id = %s",
+                (telegram_id, user_id)
+            )
+            self.conn.commit()
+        except Exception as e:
+            self.conn.rollback()
+
+    def update_subscribe(self, user_id: int, subscribe_mod: str):
+        try:
+            self.cursor.execute(
+                "UPDATE users SET notification = %s WHERE id = %s",
+                (subscribe_mod, user_id)
+            )
+            self.conn.commit()
+        except Exception as e:
+            self.conn.rollback()
