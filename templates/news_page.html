@@ -8,6 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="d-flex flex-column flex-lg-row">
     <!-- Навигация - всегда слева -->
@@ -35,7 +38,11 @@
             </div>
         </div>
         <div class="nav-lower mt-3">
-            {% if 'user' in session and session['user']['role'] != 'admin' %}
+            {% if 'user' in session and session['user']['role'] == 'verified' %}
+                <a href="{{ url_for('create_news') }}"><button class="create-news-button w-100">Создать новость</button></a>
+            {% elif 'user' in session and session['user']['role'] == 'admin' %}
+                <a href="{{ url_for('create_news') }}"><button class="create-news-button w-100">Создать новость</button></a>
+            {% elif 'user' in session and session['user']['role'] != 'admin' %}
                 <!-- Кнопка "Предложить новость" только для обычных пользователей -->
                 <a href="{{ url_for('suggest_news') }}"><button class="suggest-news-button w-100">Предложить новость</button></a>
             {% endif %}
@@ -117,7 +124,7 @@
         <div class="main-container p-3 flex-grow-1 order-lg-1">
             
             <div class="content">
-                <div class="fullnews">
+                <div class="fullnews" id="articleContent">
                     <div class="fnews-heading">
                         <h5 class="fnews-date">
                             {{ news_item['date'].strftime('%d.%m.%Y') }}
@@ -153,6 +160,15 @@
                             <button class="fnew-save-button">
                                 Сохранить
                             </button>
+
+                            <a href="{{ url_for('download_pdf', 
+                                    title=news_item.title, 
+                                    date=news_item.date.strftime('%d.%m.%Y'), 
+                                    tags=news_item.tags|join(','), 
+                                    content=news_item.content) }}">
+                                <button class="fnew-download-button">Скачать PDF</button>
+                            </a>
+                            
                             <a href="{{ url_for('index') }}">
                                 <button class="fnew-back-button">
                                     Назад
