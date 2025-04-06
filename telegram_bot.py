@@ -253,10 +253,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def get_latest_news(update: Update, context: ContextTypes.DEFAULT_TYPE, user_state: UserState) -> None:
     """Получает и отправляет последние новости"""
     query = update.callback_query
-    news = db.get_published_news()
+    news_list = db.get_published_news()
+    cut_list = news_list[:10]
 
-    print("Это?")
-    news = await fetch_news_from_api(user_state.token if user_state.is_authenticated else None)
+    news = ''
+
+    for count, item in enumerate(cut_list):
+        news += f'{count+1}. {item['title']}\n{item['link']}\n\n'
 
     keyboard = [
         [InlineKeyboardButton("📋 Меню", callback_data='menu')]
