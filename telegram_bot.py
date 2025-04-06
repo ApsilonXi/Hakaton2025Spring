@@ -274,7 +274,7 @@ async def get_latest_news(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         )
 
 
-async def fetch_news_from_api(token: str = None) -> str:
+async def fetch_news_from_api(user_id: int = None) -> str:
     """Получает новости с API (заглушка)"""
     if token:
         return "1. Персонализированная новость 1\n2. Персонализированная новость 2"
@@ -291,7 +291,7 @@ async def daily_digest(context: ContextTypes.DEFAULT_TYPE) -> None:
     for user in users:
         if user[2].strip() == '2' and user[3] != 1000000000:
             try:
-                news = await fetch_news_from_api()
+                news = await fetch_news_from_api(user[0])
                 await context.bot.send_message(
                     chat_id=user[3],
                     text=f"🌅 Доброе утро! Ваша ежедневная сводка:\n\n{news}",
