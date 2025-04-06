@@ -135,7 +135,6 @@ CREATE TABLE public.news (
     type_news boolean DEFAULT true,
     title text NOT NULL,
     content text NOT NULL,
-    status boolean DEFAULT false,
     tag integer,
     source integer,
     date timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -435,12 +434,12 @@ COPY public.folders (id, userlog, name, newsid) FROM stdin;
 -- Data for Name: news; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.news (id, type_news, title, content, status, tag, source, date) FROM stdin;
-1	t	Новые технологии в IT	Содержание статьи о новых технологиях...	t	2	2	2025-04-05 15:14:55.008649
-2	t	Выборы 2023	Последние новости о выборах...	t	1	1	2025-04-05 15:14:55.008649
-3	f	Корпоративные новости	Внутренние новости нашей организации...	t	3	4	2025-04-05 15:14:55.008649
-4	t	Спортивные достижения	Новые рекорды в спорте...	f	4	3	2025-04-05 15:14:55.008649
-5	t	Советы по здоровью	Как сохранить здоровье...	f	5	1	2025-04-05 15:14:55.008649
+COPY public.news (id, type_news, title, content, tag, source, date) FROM stdin;
+1	t	Новые технологии в IT	Содержание статьи о новых технологиях...	2	2	2025-04-05 15:14:55.008649
+2	t	Выборы 2023	Последние новости о выборах...	1	1	2025-04-05 15:14:55.008649
+3	f	Корпоративные новости	Внутренние новости нашей организации...	3	4	2025-04-05 15:14:55.008649
+4	t	Спортивные достижения	Новые рекорды в спорте...	4	3	2025-04-05 15:14:55.008649
+5	t	Советы по здоровью	Как сохранить здоровье...	5	1	2025-04-05 15:14:55.008649
 \.
 
 
@@ -449,6 +448,7 @@ COPY public.news (id, type_news, title, content, status, tag, source, date) FROM
 --
 
 COPY public.offers (id, user_id, link) FROM stdin;
+2	7	source_suggestion:https://наука.рф/news/dmitriy-chernyshenko-otkryl-filial-yuzhnogo-federalnogo-universiteta-v-gavane/
 \.
 
 
@@ -516,6 +516,7 @@ COPY public.user_tag_subscriptions (user_id, tag_id) FROM stdin;
 3	5
 4	1
 4	3
+7	2
 \.
 
 
@@ -524,11 +525,12 @@ COPY public.user_tag_subscriptions (user_id, tag_id) FROM stdin;
 --
 
 COPY public.users (id, user_login, user_password, user_role, notification, tag_subscription, sources_subsc, telegram_id) FROM stdin;
-1	admin               	admin123                                                                                            	admin          	1                   	\N	\N	1000000000                                                                                          
-4	moderator           	mod123                                                                                              	verified       	1                   	\N	\N	1000000000                                                                                          
-3	regular_user        	user123                                                                                             	user           	0                   	2	1	1000000000                                                                                          
-2	verified_user       	user123                                                                                             	verified       	1                   	1	2	1000000000                                                                                          
+7	mila                	$2a$06$WRGVLQgJlFixwI9qUErV5u0ULG3zAK/A4tDtHSeJZDFG1ZKBcptlK                                        	user           	0                   	\N	\N	1000000000                                                                                          
+1	admin               	$2a$06$n1nEo8oPkP1ikm/M0aPiMeF2QilIsL/2cJe2cOUNPCq49you62LaS                                        	admin          	1                   	\N	\N	1000000000                                                                                          
+4	moderator           	$2a$06$ie.5VYHvXoEdVCaggscI7.mvrn9mQ9NCQDmZKbl.JHNPlSihgzyle                                        	verified       	1                   	\N	\N	1000000000                                                                                          
+3	regular_user        	$2a$06$wHtkV8uL1k0VpP3AuGC15.l5j7OCaGlXJhTn9zo8ShhZpu/R.lRUO                                        	user           	0                   	2	1	1000000000                                                                                          
 6	test_user           	$2a$06$S4gQYZG06fDNiyDjFdBpD.QVJKISp/s8bQ40t9FoR7R.E6BbvpGnW                                        	user           	1                   	\N	\N	1000000000                                                                                          
+2	verified_user       	$2a$06$HA1LVz/4aMB.5/7EGtFyV.FZkUrIuExC/ew925Rl7xEZ9syC5m2r2                                        	verified       	1                   	1	2	1000000000                                                                                          
 \.
 
 
@@ -550,7 +552,7 @@ SELECT pg_catalog.setval('public.news_id_seq', 5, true);
 -- Name: offers_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.offers_id_seq', 1, false);
+SELECT pg_catalog.setval('public.offers_id_seq', 2, true);
 
 
 --
@@ -578,7 +580,7 @@ SELECT pg_catalog.setval('public.tags_news_id_seq', 7, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 6, true);
+SELECT pg_catalog.setval('public.users_id_seq', 7, true);
 
 
 --
