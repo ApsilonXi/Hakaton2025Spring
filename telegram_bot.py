@@ -261,6 +261,7 @@ async def get_latest_news(update: Update, context: ContextTypes.DEFAULT_TYPE, us
     for count, item in enumerate(cut_list):
         news += f'{count+1}. {item['title']}\n{item['link']}\n\n'
 
+
     keyboard = [
         [InlineKeyboardButton("📋 Меню", callback_data='menu')]
     ]
